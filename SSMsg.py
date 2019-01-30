@@ -704,7 +704,7 @@ class Eleve():
 if __name__=="__main__":
     app = QtWidgets.QApplication(sys.argv)
     gui=Gui()
-    gui.show()
     gui.getConfig()
+    gui.show()
     app.exec_()
     
