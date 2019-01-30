@@ -1,0 +1,11 @@
+Pour uitiliser ce programme, vous devez installer 
+=> python3
+=> zeep à l'aide la commande :
+#pip3 install zeep
+=> pyqt5 à l'aide la commande :
+pip3 install pyqt5
+
+Le profil du service Web utilisé pour cette application doit être configuré avec au minimum les méthodes autorisées :
+getAllAccountsExtended et sendMsg
+Pour plus d'informations  sur les profils de service web et les méthodes autorisées, veuillez vous référer à la documentation de SmartSchool.
+Le nom des fichiers à envoyer doit correspondre au matricule de l'élève, encodé dans le champ stamboeknummer de SmartSchool.
