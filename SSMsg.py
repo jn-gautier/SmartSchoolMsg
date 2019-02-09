@@ -286,9 +286,9 @@ class Gui(QtWidgets.QMainWindow):
         self.getConfig()
         alert = "<div><p>Vous voulez importer les fichiers mais :<ul>"
         valide = 1
-        if self.dictConfig["web"] == 0:
-            alert += "<li>Vous ne semblez pas connecté à  <b>internet</b></li>"
-            valide = 0
+        #if self.dictConfig["web"] == 0:
+        #alert += "<li>Vous ne semblez pas connecté à  <b>internet</b></li>"
+        #    valide = 0
         if self.dictConfig["urlEcole"] == "":
             alert += "<li>Vous n'avez pas configuré l'<b>adresse SmartSchool</b> de votre école.</li>"
             valide = 0
@@ -460,9 +460,9 @@ class Gui(QtWidgets.QMainWindow):
 
         # vérification de l'accès au site web de SS
         # cet accès est systématiquement vérifé à chaque fois qu'on fait appel à checkConfig
-        hostname = "https://"+self.dictConfig["urlEcole"]
-        response = os.system("ping -c 1 " + hostname)
-        self.dictConfig["web"] = str(response)  # 0 down 1 up
+        #hostname = "https://"+self.dictConfig["urlEcole"]
+        #response = os.system("ping -c 1 " + hostname)
+        #self.dictConfig["web"] = str(response)  # 0 down 1 up
 
         # vérification de la clé d'accès à l'APi_SS
         self.dictConfig["SSApiKey"] = confJson["SSApiKey"]
@@ -591,9 +591,9 @@ class Gui(QtWidgets.QMainWindow):
         if noFile:
             alert += "<li>Vous n'avez importé <b>aucun fichier</b> à envoyer</li>"
             valide = 0
-        if self.dictConfig["web"] == 0:
-            alert += "<li>Vous ne semblez pas connecté à  <b>internet</b></li>"
-            valide = 0
+        #if self.dictConfig["web"] == 0:
+        #   alert += "<li>Vous ne semblez pas connecté à  <b>internet</b></li>"
+        #  valide = 0
         if self.dictConfig["urlEcole"] == "":
             alert += "<li>Vous n'avez pas configuré l'<b>adresse SmartSchool</b> de votre école.</li>"
             valide = 0
