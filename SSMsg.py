@@ -325,6 +325,7 @@ class Gui(QtWidgets.QMainWindow):
                 # récupère le nom du fichier avec son extension
                 fileName = os.path.basename(filePath)
                 fileName = os.path.splitext(fileName)[0]
+                fileName=fileName.split('_')[0]#le nom du fichier peut contenir autre chose que le matricule de l'élève mais il doit commencer par celui-ci et le reste du nom doit être séparé du matricule par le symbole "_"
                 # à chaque élève du dictEleves pour lequel il y a un fichier, j'ajoute le path vers ce fichier
                 self.dictEleves[fileName].filePath = filePath
             except KeyError:
