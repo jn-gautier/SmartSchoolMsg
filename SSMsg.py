@@ -324,7 +324,7 @@ class Gui(QtWidgets.QMainWindow):
 
                 # récupère le nom du fichier avec son extension
                 fileName = os.path.basename(filePath)
-                fileName = os.path.splitext(fileName)[0]
+                fileName = os.path.splitext(fileName)[0]#on récupère le nom sans l'extension
                 fileName=fileName.split('_')[0]#le nom du fichier peut contenir autre chose que le matricule de l'élève mais il doit commencer par celui-ci et le reste du nom doit être séparé du matricule par le symbole "_"
                 # à chaque élève du dictEleves pour lequel il y a un fichier, j'ajoute le path vers ce fichier
                 self.dictEleves[fileName].filePath = filePath
@@ -632,10 +632,7 @@ class Gui(QtWidgets.QMainWindow):
 
     def sendMsg(self, eleve):
         """envoie le fichier fileName(str) à l'élève eleve(obj) """
-        webservices = "https://" + \
-            self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl"
-        client = Client(webservices)
-
+        
         attachmentName = eleve.naam+"_"+eleve.voornaam+".pdf"
         with open(eleve.filePath, "rb") as myFile:
             encodedFile = base64.b64encode(myFile.read())
@@ -650,7 +647,7 @@ class Gui(QtWidgets.QMainWindow):
 
         body = self.message.toHtml()
         if self.sendComptePrincipal.isChecked():
-            result0 = client.service.sendMsg(
+            result0 = self.client.service.sendMsg(
                 self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, jsonAttachment, 0, 0)
             if result0 == 0:
                 eleve.statutMsgComptePrincipal = "Envoyé"
@@ -661,7 +658,7 @@ class Gui(QtWidgets.QMainWindow):
 
         if self.sendComptesSecondaires.isChecked():
             if eleve.status1 == "actief":
-                result1 = client.service.sendMsg(
+                result1 = self.client.service.sendMsg(
                     self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, jsonAttachment, 1, 0)
                 if result1 == 0:
                     eleve.statutMsgCoaccount1 = "Envoyé"
@@ -670,7 +667,7 @@ class Gui(QtWidgets.QMainWindow):
             else:
                 result1 = 0  # s'il n'y a pas de compte secondaire 1, il n'y a pas d'erreur liée à l'envoi sur ce compte
             if eleve.status2 == "actief":
-                result2 = client.service.sendMsg(
+                result2 = self.client.service.sendMsg(
                     self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, jsonAttachment, 2, 0)
                 if result2 == 0:
                     eleve.statutMsgCoaccount2 = "Envoyé"
@@ -714,6 +711,9 @@ class Gui(QtWidgets.QMainWindow):
                 self, 'Pas de sujet - pas de message', alert)
         else:
             self.cleanDictEleves()
+            webservices = "https://" + self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl" #je crée le webservices et le client ici pour ne pas le recréer à chaque envoi dans la boucle d'envois
+            self.client = Client(webservices)
+
             for eleve in self.dictEleves.values():
                 self.sendMsg(eleve)
         self.cleanDictEleves()
