@@ -695,8 +695,7 @@ class Gui(QtWidgets.QMainWindow):
         jsonAttachment = json.dumps(attachment)
 
         fromaddr = self.dictConfig["interNummerExpediteur"]
-        #toaddr = eleve.internnummer
-        toaddr="200"
+        toaddr = eleve.internnummer
         subject = self.sujet.text()
 
         body = self.message.toHtml()
