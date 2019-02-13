@@ -1,3 +1,7 @@
 créer un éditeur html basique pour le message
 afficher une erreur si les dépendences ne sont pas installées
 supprimer le PING, il n'a pas beaucoup d'intérêts et engendre des erreurs
+ajouter un checkbox renommer les fichiers qui permet de choisir si on les renomme ou non
+ajouter un bouton ouvrant une fenêtre de dialogue : Options de renomage avec de schamps %nom ; % prenom ; facture_decembre
+Il faudra veiller à ce qu'on n'oublie pas de changer les options si elles ont été configurées par ex factture décembre qui reste pour le prochain envoi
+redimmensionner les colonnes lorsqu'on modifie la taille de la fenêtre (peut-être avec un strech?)

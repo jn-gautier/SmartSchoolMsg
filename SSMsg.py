@@ -150,6 +150,40 @@ class Gui(QtWidgets.QMainWindow):
         # placement du dock dans la fenêtre, à gauche
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dockWidgetMessage)
     #
+        ##################
+        #le Dock Renommer#
+        ##################
+        # création du Dock
+        dockWidgetRename = QtWidgets.QDockWidget(self)
+        dockWidgetRename.setTitleBarWidget(QtWidgets.QLabel(
+            '<p style="font-size:11pt;font-weight:bold">Renommer</p>'))
+        dockWidgetRename.setFeatures(
+            QtWidgets.QDockWidget.NoDockWidgetFeatures)
+
+        # création d'un layout vertical et d'un widget dans lequel on place le layout
+        layout = QtWidgets.QVBoxLayout()
+        widget = QtWidgets.QWidget()
+        widget.setLayout(layout)
+
+        # création des widget du message
+        self.Renommer = QtWidgets.QCheckBox("Renommer")
+        self.Renommer.setToolTip(
+            "<p>Renomme les fichiers lorsqu'ils sont envoyés</p>")
+        self.Renommer.setCheckState(2)
+        
+        self.renamePattern = QtWidgets.QLineEdit()
+        self.renamePattern.setText("%nom ; %prenom")
+        
+        # placement des widget de renommage dans le layout
+        layout.addWidget(self.Renommer)
+        layout.addWidget(QtWidgets.QLabel("<p><b>Motif</b></p>"))
+        layout.addWidget(self.renamePattern)
+
+        # placement du widget dans le dock
+        dockWidgetRename.setWidget(widget)
+
+        # placement du dock dans la fenêtre, à gauche
+        self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dockWidgetRename)
 
     def ping(host):
         """
@@ -629,11 +663,30 @@ class Gui(QtWidgets.QMainWindow):
                 print('Erreur : %s' % e)
                 print('Message : ', traceback.format_exc())
     #
-
+    def getAttachementName(self , eleve):
+        """Reçois un élève comme argument et renvoit un nom formé à partir des données de l'élève et respectant le motif donné dans les paramètres de renommage"""
+        attachmentName=[]
+        listMotif=self.renamePattern.text().split(';')
+        for elem in listMotif:
+            elem=elem.replace(' ','')
+            if elem=='%nom':
+                attachmentName.append(eleve.naam)
+            elif elem=='%prenom':
+                attachmentName.append(eleve.voornaam)
+            else:
+                attachmentName.append(elem)
+        attachmentName.append('.pdf')
+        attachmentName='_'.join(attachmentName)
+        return(attachmentName)
+                
+                
     def sendMsg(self, eleve):
         """envoie le fichier fileName(str) à l'élève eleve(obj) """
-        
-        attachmentName = eleve.naam+"_"+eleve.voornaam+".pdf"
+        if self.Renommer.isChecked():
+            attachmentName=self.getAttachementName(eleve)
+        else:
+            attachmentName=os.path.basename(eleve.filePath)
+        #attachmentName = eleve.naam+"_"+eleve.voornaam+".pdf"
         with open(eleve.filePath, "rb") as myFile:
             encodedFile = base64.b64encode(myFile.read())
         encodedFile = encodedFile.decode()  # on recupere la partie string du byte
@@ -642,7 +695,8 @@ class Gui(QtWidgets.QMainWindow):
         jsonAttachment = json.dumps(attachment)
 
         fromaddr = self.dictConfig["interNummerExpediteur"]
-        toaddr = eleve.internnummer
+        #toaddr = eleve.internnummer
+        toaddr="200"
         subject = self.sujet.text()
 
         body = self.message.toHtml()
@@ -687,7 +741,8 @@ class Gui(QtWidgets.QMainWindow):
             # rename the original file
             # on produit le nouveau nom du fichier
             newName = os.path.join(src, attachmentName)
-            os.rename(eleve.filePath, newName)  # on renomme le fichier
+            if self.Renommer.isChecked():
+                os.rename(eleve.filePath, newName)  # on renomme le fichier si on a demandé de renommer
             eleve.filePath = ""  # on supprime le fichier à envoyer de l'objet Eleve
 
         self.updateFileList()
