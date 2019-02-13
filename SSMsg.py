@@ -105,6 +105,7 @@ class Gui(QtWidgets.QMainWindow):
             '<p style="font-size:11pt;font-weight:bold">Message</p>'))
         dockWidgetMessage.setFeatures(
             QtWidgets.QDockWidget.NoDockWidgetFeatures)
+        dockWidgetMessage.setMaximumWidth(400)
 
         # création d'un layout vertical et d'un widget dans lequel on place le layout
         layout = QtWidgets.QVBoxLayout()
@@ -390,7 +391,7 @@ class Gui(QtWidgets.QMainWindow):
             '<p style="font-size:10pt;font-weight:bold">Fichiers</p>'))
         self.dockWidgetList.setFeatures(
             QtWidgets.QDockWidget.NoDockWidgetFeatures)
-        self.dockWidgetList.setMinimumWidth(1000)
+        self.dockWidgetList.setMinimumWidth(400)
         
         # création d'un layout vertical et d'un widget dans lequel on place le layout
         layout = QtWidgets.QVBoxLayout()
@@ -401,16 +402,9 @@ class Gui(QtWidgets.QMainWindow):
         self.tableWidget = QtWidgets.QTableWidget()
         self.tableWidget.setColumnCount(5)
         self.tableWidget.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
-        #self.tableWidget.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
         self.tableWidget.setHorizontalHeaderLabels(
             ['Nom du fichier', "Nom et prénom de l'élève", "Statut compte principal", "Statut compte sec. 1", "Statut compte sec. 2"])
-        self.tableWidget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         
-        self.tableWidget.setColumnWidth(0, 200)
-        self.tableWidget.setColumnWidth(1, 200)
-        self.tableWidget.setColumnWidth(2, 200)
-        self.tableWidget.setColumnWidth(3, 200)
-        self.tableWidget.setColumnWidth(4, 200)
         self.tableWidget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         self.tableWidget.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
         self.tableWidget.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
@@ -419,7 +413,7 @@ class Gui(QtWidgets.QMainWindow):
         # creation du tableau : contenu
         for eleve in self.dictEleves.values():
             if eleve.filePath != "":
-                itemFileName = QtWidgets.QTableWidgetItem(eleve.stamboeknummer)
+                itemFileName = QtWidgets.QTableWidgetItem(os.path.basename(eleve.filePath))
                 nomPrenom = eleve.naam+"_"+eleve.voornaam
                 itemNomPrenom = QtWidgets.QTableWidgetItem(nomPrenom)
                 itemStatutMsgPrinc = QtWidgets.QTableWidgetItem(
@@ -463,11 +457,12 @@ class Gui(QtWidgets.QMainWindow):
         """
         Le fichier correspondant à la ligne active est retiré de la liste des fichiers à traiter
         """
-        self.tableWidget.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
         try:
             currentRow = self.tableWidget.currentRow()
             name = self.tableWidget.item(currentRow, 0).data(0)
-            self.dictEleves[name].filePath = ""
+            for eleve in self.dictEleves.values():
+                if os.path.basename(eleve.filePath)==name:
+                    eleve.filePath = ""
         except AttributeError : #s'il n'y a pas de ligne dans le tableau
             pass
         except Exception as e:
@@ -660,7 +655,7 @@ class Gui(QtWidgets.QMainWindow):
         if self.message.toPlainText() == "":
             valide = 0
             alert += "<li>Vous avez oublié le <b>message</b></li>"
-        if self.sendComptePrincipal.isChecked() == 0 & self.sendComptesSecondaires.isChecked() == 0:
+        if (self.sendComptePrincipal.isChecked() == 0) & (self.sendComptesSecondaires.isChecked() == 0):
             valide = 0
             alert += "<li>Vous n'avez sélectionné <b>aucun compte</b> pour l'envoi</li>"
 
