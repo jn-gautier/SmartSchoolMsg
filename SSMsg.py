@@ -390,8 +390,8 @@ class Gui(QtWidgets.QMainWindow):
             '<p style="font-size:10pt;font-weight:bold">Fichiers</p>'))
         self.dockWidgetList.setFeatures(
             QtWidgets.QDockWidget.NoDockWidgetFeatures)
-        self.dockWidgetList.setMinimumWidth(600)
-
+        self.dockWidgetList.setMinimumWidth(1000)
+        
         # création d'un layout vertical et d'un widget dans lequel on place le layout
         layout = QtWidgets.QVBoxLayout()
         widget = QtWidgets.QWidget()
@@ -401,13 +401,21 @@ class Gui(QtWidgets.QMainWindow):
         self.tableWidget = QtWidgets.QTableWidget()
         self.tableWidget.setColumnCount(5)
         self.tableWidget.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
+        #self.tableWidget.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
         self.tableWidget.setHorizontalHeaderLabels(
             ['Nom du fichier', "Nom et prénom de l'élève", "Statut compte principal", "Statut compte sec. 1", "Statut compte sec. 2"])
-        self.tableWidget.setColumnWidth(0, 120)
-        self.tableWidget.setColumnWidth(1, 120)
-        self.tableWidget.setColumnWidth(2, 120)
-        self.tableWidget.setColumnWidth(3, 120)
-        self.tableWidget.setColumnWidth(4, 120)
+        self.tableWidget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        
+        self.tableWidget.setColumnWidth(0, 200)
+        self.tableWidget.setColumnWidth(1, 200)
+        self.tableWidget.setColumnWidth(2, 200)
+        self.tableWidget.setColumnWidth(3, 200)
+        self.tableWidget.setColumnWidth(4, 200)
+        self.tableWidget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        self.tableWidget.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+        self.tableWidget.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
+        self.tableWidget.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
+        self.tableWidget.horizontalHeader().setSectionResizeMode(4, QtWidgets.QHeaderView.Stretch)
         # creation du tableau : contenu
         for eleve in self.dictEleves.values():
             if eleve.filePath != "":
@@ -432,7 +440,7 @@ class Gui(QtWidgets.QMainWindow):
                     self.tableWidget.rowCount()-1, 3, itemStatutMsg1)
                 self.tableWidget.setItem(
                     self.tableWidget.rowCount()-1, 4, itemStatutMsg2)
-
+        
         # creation du bouton remove
         self.boutton_remove = QtWidgets.QPushButton(
             QtGui.QIcon('./icons/remove.svg'), 'Retirer de la liste')
@@ -448,22 +456,27 @@ class Gui(QtWidgets.QMainWindow):
 
         # placement du dock dans la fenêtre, à droite
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockWidgetList)
-    #
+        
+
 
     def removeFile(self):
         """
         Le fichier correspondant à la ligne active est retiré de la liste des fichiers à traiter
         """
+        self.tableWidget.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
         try:
             currentRow = self.tableWidget.currentRow()
             name = self.tableWidget.item(currentRow, 0).data(0)
             self.dictEleves[name].filePath = ""
-        except:
+        except AttributeError : #s'il n'y a pas de ligne dans le tableau
+            pass
+        except Exception as e:
             print("Erreur dans la fonction removeFile")
             print('Erreur : %s' % e)
             print('Message : ', traceback.format_exc())
 
         self.updateFileList()
+    
 
     ########################################
     #Fonctions concernant la configuration #
@@ -608,6 +621,7 @@ class Gui(QtWidgets.QMainWindow):
     ############################################
     #Fonctions concernant l'envoi des messages #
     #verifAvantEnvoi                           #
+    #getAttachementName                        #
     #sendMsg                                   #
     #sendAllFiles                              #
     ############################################
