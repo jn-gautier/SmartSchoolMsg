@@ -26,6 +26,7 @@ class Gui(QtWidgets.QMainWindow):
         self.dictConfig = {}
         self.dictEleves = {}
         self.current_dir = os.path.expanduser("~")
+        self.premierAffichage=True
 
         ######################################
         #paramétrage de la fenêtre principale#
@@ -385,7 +386,9 @@ class Gui(QtWidgets.QMainWindow):
             self.dockWidgetList.setParent(None)
         except:
             self.dockWidgetList = QtWidgets.QDockWidget(self)
-
+        if self.premierAffichage:
+            self.showMaximized()
+            self.premierAffichage=False
         # creation du DockWidget
         self.dockWidgetList.setTitleBarWidget(QtWidgets.QLabel(
             '<p style="font-size:10pt;font-weight:bold">Fichiers</p>'))
@@ -738,11 +741,11 @@ class Gui(QtWidgets.QMainWindow):
             else:
                 result2 = 0  # s'il n'y a pas de compte secondaire 2, il n'y a pas d'erreur liée à l'envoi sur ce compte
         else:
-            result1 = 0  # s'il n'y a pas de message à envoyer aux comptes secondaires, il n'y a donc pas d'erreur liée à ces envois
+            result1 = 0  # s'il n'y a pas de message à envoyer aux comptes secondaires, il n'y a donc pas d'erreur liée à cet envois
             result2 = 0  # idem
 
         # si aucun problème n'a été rencontré dans l'envoi des messages
-        if result0 == 0 & result1 == 0 & result2 == 0:
+        if (result0 == 0) & (result1 == 0) & (result2 == 0):
             # get the path to the file in the current directory
             # on récupère le path du fichier
             src = os.path.dirname(eleve.filePath)
