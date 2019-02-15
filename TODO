@@ -1,3 +1,3 @@
 créer un éditeur html basique pour le message
 afficher une erreur si les dépendences ne sont pas installées
-supprimer le PING, il n'a pas beaucoup d'intérêts et engendre des erreurs
+modifier le qlineedit du motif de renommage pour utiliser un qtextedit à la place et mettre en évidence le motif de renommage avec un qsyntaxhighlighter ; voir s'il existe une possibilité pour limiter le nombre de lignes dans le qtextedit. A defaut d'une solution intéressante, limiter la hauteur du widget

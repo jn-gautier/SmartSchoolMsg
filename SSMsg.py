@@ -230,7 +230,12 @@ class Gui(QtWidgets.QMainWindow):
 
             webservices = "https://" + \
                 self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl"
-            client = Client(webservices)
+            try:
+                client = Client(webservices)
+            except NewConnectionError:
+                pass
+            except Exception as e:
+                print('Erreur : %s' % e)
 
             # recupération de la string JSON avec toutes les infos concernant les élèves, le 1 rend la fonction récurssive
             result = client.service.getAllAccountsExtended(
@@ -386,7 +391,7 @@ class Gui(QtWidgets.QMainWindow):
             self.dockWidgetList.setParent(None)
         except:
             self.dockWidgetList = QtWidgets.QDockWidget(self)
-        if self.premierAffichage:
+        if self.premierAffichage:#la fenêtre s'affcihe en plein écran lors du premier affichage, après si l'utilisateur à décidé de la réduire on la laisse réduite
             self.showMaximized()
             self.premierAffichage=False
         # creation du DockWidget
@@ -394,7 +399,7 @@ class Gui(QtWidgets.QMainWindow):
             '<p style="font-size:10pt;font-weight:bold">Fichiers</p>'))
         self.dockWidgetList.setFeatures(
             QtWidgets.QDockWidget.NoDockWidgetFeatures)
-        self.dockWidgetList.setMinimumWidth(400)
+        self.dockWidgetList.setMinimumWidth(800)
         
         # création d'un layout vertical et d'un widget dans lequel on place le layout
         layout = QtWidgets.QVBoxLayout()
