@@ -8,6 +8,7 @@ import base64
 import json
 import traceback
 import platform
+import csv
 
 from zeep import Client  # doit être installé en plus de python à l'aide de pip
 
@@ -25,6 +26,7 @@ class Gui(QtWidgets.QMainWindow):
         super(Gui, self).__init__()
         self.dictConfig = {}
         self.dictEleves = {}
+        self.dictError = {}
         self.current_dir = os.path.expanduser("~")
         self.premierAffichage=True
 
@@ -201,6 +203,23 @@ class Gui(QtWidgets.QMainWindow):
 
         # Pinging
         return system_call(command) == 0
+    
+    def getErrorCodeMessage(self):
+        """Création du dictError, un dict qui a comme clé les codes d'erreur et comme valeur la signification de ces codes"""
+        webservices = "https://" + \
+                self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl"
+        try:
+            client = Client(webservices)
+        except NewConnectionError:
+            pass
+        except Exception as e:
+            print('Erreur : %s' % e)
+        #recupération des codes d'erreurs et production du dict pour interpréter ces codes
+        result = client.service.returnCsvErrorCodes()
+        errorsList=(result.rstrip('\n\r').split("\n"))
+        for error in errorsList:
+            liste_infos=error.split(";")
+            self.dictError[int(liste_infos[0])]=liste_infos[1]
 
     ####################################
     #Fonctions concernant le dictEleves#
@@ -210,6 +229,7 @@ class Gui(QtWidgets.QMainWindow):
     ####################################
     def prodDictEleves(self):
         """Production du dictEleves : un dict reprenant tous les élèves (obj)"""
+        
         try:
             prog = QtWidgets.QProgressDialog()
             prog.setWindowFlags(QtCore.Qt.SplashScreen |
@@ -236,15 +256,14 @@ class Gui(QtWidgets.QMainWindow):
                 pass
             except Exception as e:
                 print('Erreur : %s' % e)
-
+            
             # recupération de la string JSON avec toutes les infos concernant les élèves, le 1 rend la fonction récurssive
             result = client.service.getAllAccountsExtended(
                 self.dictConfig['SSApiKey'], self.dictConfig['gpEleves'], 1)
             
             # conversion de la string json en une liste de dict
             listEleve = json.loads(result)
-            print(listEleve)
-
+            
             # remplissage du dictEleves
             for eleve in listEleve:
                 newEleve = Eleve()
@@ -277,9 +296,9 @@ class Gui(QtWidgets.QMainWindow):
         except TypeError:
             if isinstance(result, int):
                 print("Le fichier reçu n'est pas un fichier JSON.")
-                print("Vous avez probablement reçu un code d'erreur en provenance de l'API-SS.")
-                print("Code d'erreur reçu :", result)
-                msgError="<p>Il n'a pas été possible de récupérer la liste des élèves sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p><p>Code d'erreur reçu :  %s </p>" %result
+                print("Vous avez reçu un message d'erreur en provenance de l'API-SS.")
+                print("Message d'erreur reçu :", self.dictError[result])
+                msgError="<p>Il n'a pas été possible de récupérer la liste des élèves sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p><p>Vous avez reçu un message d'erreur en provenance de l'API-SS.</p><p>Message d'erreur reçu :  %s </p>" %self.dictError[result]
                 QtWidgets.QMessageBox.warning(self, 'Erreur récupération élèves',msgError)
         
         except Exception as e:
@@ -531,6 +550,9 @@ class Gui(QtWidgets.QMainWindow):
 
         # vérification du gpEleves
         self.dictConfig["gpEleves"] = confJson["gpEleves"]
+        
+        #production du dictError
+        self.getErrorCodeMessage()
 
         # vérification du dictEleves, production si nécessaire
         # le dict élèves est long à produire et il n'est pas nécessaire de le produire à chaque appel à checkConfig
