@@ -9,7 +9,7 @@ import json
 import traceback
 import platform
 
-from zeep import Client  # doit être installé en plus de python à l'aide pip
+from zeep import Client  # doit être installé en plus de python à l'aide de pip
 
 from platform import system as system_name  # Returns the system/OS name
 from subprocess import call as system_call  # Execute a shell
@@ -240,9 +240,10 @@ class Gui(QtWidgets.QMainWindow):
             # recupération de la string JSON avec toutes les infos concernant les élèves, le 1 rend la fonction récurssive
             result = client.service.getAllAccountsExtended(
                 self.dictConfig['SSApiKey'], self.dictConfig['gpEleves'], 1)
-
+            
             # conversion de la string json en une liste de dict
             listEleve = json.loads(result)
+            print(listEleve)
 
             # remplissage du dictEleves
             for eleve in listEleve:
@@ -272,7 +273,15 @@ class Gui(QtWidgets.QMainWindow):
                 QtWidgets.QApplication.processEvents()
                 # ce temps d'attente ne sert à rien mais il évite de voir la barre de progression disparaitre subitement
                 time.sleep(0.01)
-
+        
+        except TypeError:
+            if isinstance(result, int):
+                print("Le fichier reçu n'est pas un fichier JSON.")
+                print("Vous avez probablement reçu un code d'erreur en provenance de l'API-SS.")
+                print("Code d'erreur reçu :", result)
+                msgError="<p>Il n'a pas été possible de récupérer la liste des élèves sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p><p>Code d'erreur reçu :  %s </p>" %result
+                QtWidgets.QMessageBox.warning(self, 'Erreur récupération élèves',msgError)
+        
         except Exception as e:
 
             # self.dialPatientez.close()
