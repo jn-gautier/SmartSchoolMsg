@@ -216,7 +216,7 @@ class Gui(QtWidgets.QMainWindow):
             print('Erreur : %s' % e)
         #recupération des codes d'erreurs et production du dict pour interpréter ces codes
         result = client.service.returnCsvErrorCodes()
-        errorsList=(result.rstrip('\n\r').split("\n"))
+        errorsList=result.rstrip('\n\r').split("\n")
         for error in errorsList:
             liste_infos=error.split(";")
             self.dictError[int(liste_infos[0])]=liste_infos[1]
@@ -626,6 +626,10 @@ class Gui(QtWidgets.QMainWindow):
         mon_bouton = QtWidgets.QPushButton('Fermer sans enregistrer')
         mon_bouton.clicked.connect(self.closeDialConfig)
         mon_layout.addWidget(mon_bouton)
+        
+        mon_bouton = QtWidgets.QPushButton('Tester la configuration')
+        mon_bouton.clicked.connect(self.testConfig)
+        mon_layout.addWidget(mon_bouton)
 
         # ajout du layout dans la fenetre
         self.dialConfig.setLayout(mon_layout)
@@ -651,6 +655,28 @@ class Gui(QtWidgets.QMainWindow):
         myFile.close()
         self.getConfig()  # apres avoir enregistré les valeurs de config dansle fichier JSON, on génère le dictConfig
         self.dialConfig.close()
+    
+    def testConfig(self):
+        """
+        Teste la configuration en envoyant un message à la personne indiquée dans le champ 'expéditeur'.
+        """
+        self.recordValue()
+        webservices = "https://" + self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl" #je crée le webservices et le client ici pour ne pas le recréer à chaque envoi dans la boucle d'envois
+        self.client = Client(webservices)
+            
+        fromaddr = self.dictConfig["interNummerExpediteur"]
+        toaddr = self.dictConfig["interNummerExpediteur"]
+        subject="Message de test"
+        body="<p>Ceci est un message de test.</p>"
+        result = self.client.service.sendMsg(self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, 0, 0, 0)
+        if result==0:
+            QtWidgets.QMessageBox.information(self, 'Succès', "<p>Le message a bien été envoyé.</p>")
+        else:
+            message="<p>Une erreur est survenue.</p>"
+            message+="<p>"+self.dictError[result]+"</p>"
+            QtWidgets.QMessageBox.warning(self, 'Echec', message)
+            
+        
 
     ############################################
     #Fonctions concernant l'envoi des messages #
