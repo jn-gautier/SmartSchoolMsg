@@ -215,11 +215,9 @@ class Gui(QtWidgets.QMainWindow):
         except Exception as e:
             print('Erreur : %s' % e)
         #recupération des codes d'erreurs et production du dict pour interpréter ces codes
-        result = client.service.returnCsvErrorCodes()
-        errorsList=result.rstrip('\n\r').split("\n")
-        for error in errorsList:
-            liste_infos=error.split(";")
-            self.dictError[int(liste_infos[0])]=liste_infos[1]
+        result =client.service.returnJsonErrorCodes()
+        self.dictError=json.loads(result)
+       
 
     ####################################
     #Fonctions concernant le dictEleves#
@@ -259,10 +257,11 @@ class Gui(QtWidgets.QMainWindow):
             
             # recupération de la string JSON avec toutes les infos concernant les élèves, le 1 rend la fonction récurssive
             result = client.service.getAllAccountsExtended(
-                self.dictConfig['SSApiKey'], self.dictConfig['gpEleves'], 1)
+                self.dictConfig['SSApiKey'], self.dictConfig['gpEleves'], 0)
             
             # conversion de la string json en une liste de dict
             listEleve = json.loads(result)
+            #print (listEleve)
             
             # remplissage du dictEleves
             for eleve in listEleve:
@@ -297,8 +296,8 @@ class Gui(QtWidgets.QMainWindow):
             if isinstance(result, int):
                 print("Le fichier reçu n'est pas un fichier JSON.")
                 print("Vous avez reçu un message d'erreur en provenance de l'API-SS.")
-                print("Message d'erreur reçu :", self.dictError[result])
-                msgError="<p>Il n'a pas été possible de récupérer la liste des élèves sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p><p>Vous avez reçu un message d'erreur en provenance de l'API-SS.</p><p>Message d'erreur reçu :  %s </p>" %self.dictError[result]
+                print("Message d'erreur reçu :", self.dictError[str(result)])
+                msgError="<p>Il n'a pas été possible de récupérer la liste des élèves sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p><p>Vous avez reçu un message d'erreur en provenance de l'API-SS.</p><p>Message d'erreur reçu :  %s </p>" %self.dictError[str(result)]
                 QtWidgets.QMessageBox.warning(self, 'Erreur récupération élèves',msgError)
         
         except Exception as e:
@@ -673,7 +672,7 @@ class Gui(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.information(self, 'Succès', "<p>Le message a bien été envoyé.</p>")
         else:
             message="<p>Une erreur est survenue.</p>"
-            message+="<p>"+self.dictError[result]+"</p>"
+            message+="<p>"+self.dictError[str(result)]+"</p>"
             QtWidgets.QMessageBox.warning(self, 'Echec', message)
             
         
