@@ -661,12 +661,19 @@ class Gui(QtWidgets.QMainWindow):
         self.recordValue()
         webservices = "https://" + self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl" #je crée le webservices et le client ici pour ne pas le recréer à chaque envoi dans la boucle d'envois
         self.client = Client(webservices)
+        
+        with open('./test.pdf', "rb") as myFile:
+            encodedFile = base64.b64encode(myFile.read())
+        encodedFile = encodedFile.decode()  # on recupere la partie string du byte
+        attachment = [{"filename": 'test.pdf', "filedata": encodedFile}]
+        jsonAttachment = json.dumps(attachment)
+
             
         fromaddr = self.dictConfig["interNummerExpediteur"]
         toaddr = self.dictConfig["interNummerExpediteur"]
         subject="Message de test"
         body="<p>Ceci est un message de test.</p>"
-        result = self.client.service.sendMsg(self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, 0, 0, 0)
+        result = self.client.service.sendMsg(self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, jsonAttachment, 0, 0)
         if result==0:
             QtWidgets.QMessageBox.information(self, 'Succès', "<p>Le message a bien été envoyé.</p>")
         else:
