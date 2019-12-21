@@ -13,7 +13,6 @@ import csv
 from zeep import Client  # doit être installé en plus de python à l'aide de pip
 
 from platform import system as system_name  # Returns the system/OS name
-from subprocess import call as system_call  # Execute a shell
 
 from PyQt5 import QtGui
 from PyQt5 import QtCore
@@ -257,11 +256,11 @@ class Gui(QtWidgets.QMainWindow):
             
             # recupération de la string JSON avec toutes les infos concernant les élèves, le 1 rend la fonction récurssive
             result = client.service.getAllAccountsExtended(
-                self.dictConfig['SSApiKey'], self.dictConfig['gpEleves'], 0)
-            
+                self.dictConfig['SSApiKey'], self.dictConfig['gpEleves'], 1)
+        
             # conversion de la string json en une liste de dict
             listEleve = json.loads(result)
-            #print (listEleve)
+            print (listEleve)
             
             # remplissage du dictEleves
             for eleve in listEleve:
