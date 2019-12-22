@@ -3,4 +3,10 @@ afficher une erreur si les dépendences ne sont pas installées
 modifier le qlineedit du motif de renommage pour utiliser un qtextedit à la place et mettre en évidence le motif de renommage avec un qsyntaxhighlighter ; voir s'il existe une possibilité pour limiter le nombre de lignes dans le qtextedit. A defaut d'une solution intéressante, limiter la hauteur du widget
 
 pouvoir choisir la clé utilisée pour établir le lien entre le nom du fichier et le destinataire, 
+
+
 permettre l'utilisation d'une regex pour faire un traiteent sur le nom du fichier (ex/ scinder selon un '_' prendre le troisième élément et retirer les 10 premier caractères)
+
+
+important : revoir la fonction test : elle doit renvoyer une valeur si les test sont réussis, les test à effectuer doivent être définis et créés, l'envoi du message de test ne se fait que si les tests sont validés
+ces test sont à revoir en meêm temps que la fonction vérif avan envoi et vérif avant import

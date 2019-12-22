@@ -224,6 +224,22 @@ class Gui(QtWidgets.QMainWindow):
     #cleanDictEleves                   #
     #refreshDictEleves                 #
     ####################################
+    def getListUtilisateurs(self):
+        webservices = "https://" + \
+                self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl"
+        try:
+            client = Client(webservices)
+        except Exception as e:
+            print('Erreur : %s' % e)
+            
+        # recupération de la string JSON avec toutes les infos concernant les utilisateurs, le 1 rend la fonction récurssive,la string vide comme deuxième argument a comme conséquence qu'on télécharge touts les utilisateurs de la plateforme et non un sous groupe comme "prof" ou "élèves"
+        result = client.service.getAllAccountsExtended(self.dictConfig['SSApiKey'], '', 1)
+        
+        # conversion de la string json en une liste de dict
+        listUtilisateurs = json.loads(result)
+        #print(listUtilisateurs)
+        return listUtilisateurs
+        
     def prodDictEleves(self):
         """Production du dictEleves : un dict reprenant tous les élèves (obj)"""
         
@@ -245,29 +261,21 @@ class Gui(QtWidgets.QMainWindow):
 
             dictEleves = {}
 
-            webservices = "https://" + \
-                self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl"
-            try:
-                client = Client(webservices)
-            except NewConnectionError:
-                pass
-            except Exception as e:
-                print('Erreur : %s' % e)
             
-            # recupération de la string JSON avec toutes les infos concernant les élèves, le 1 rend la fonction récurssive,la string vide comme deuxième argument a comme conséquence qu'on télécharge touts les utilisateurs de la plateforme et non un sous groupe comme "prof" ou "élèves"
-            result = client.service.getAllAccountsExtended(self.dictConfig['SSApiKey'], '', 1)
-        
-            # conversion de la string json en une liste de dict
-            listEleve = json.loads(result)
-            #print (listEleve)
+            self.listUtilisateurs=self.getListUtilisateurs()
             
             # remplissage du dictEleves
-            for eleve in listEleve:
+            for utilisateur in self.listUtilisateurs:
                 newEleve = Eleve()
-                newEleve.voornaam = eleve['voornaam']
-                newEleve.naam = eleve['naam']
-                newEleve.internnummer = eleve['internnummer']
-                newEleve.stamboeknummer = eleve['stamboeknummer']
+                newEleve.voornaam = utilisateur['voornaam']
+                newEleve.naam = utilisateur['naam']
+                newEleve.internnummer = utilisateur['internnummer']
+                newEleve.stamboeknummer = utilisateur['stamboeknummer']
+                try: #on tente de trouver le champ d'identification des utilisateurs donné par l'utilisateur du logiciel. Si ce champ n'existe pas ou n'a pas été défini on mets le stamboeknummer
+                    #l'existence de ce champ sera testée lorsqu'on modifie la configuration
+                    newEleve.champIdentSS = utilisateur[self.dictConfig['champIdentSS']]
+                except KeyError:
+                    newEleve.champIdentSS = utilisateur['stamboeknummer']
                 if self.sendComptePrincipal.isChecked() == 0:
                     newEleve.statutMsgComptePrincipal = "Non sélectionné"
                 if self.sendComptesSecondaires.isChecked() == 0:
@@ -275,15 +283,20 @@ class Gui(QtWidgets.QMainWindow):
                     newEleve.statutMsgCoaccount2 = "Non sélectionné"
                 else:
                     try:
-                        newEleve.status1 = eleve['status1']
+                        newEleve.status1 = utilisateur['status1']
                     except KeyError:
                         newEleve.statutMsgCoaccount1 = "Pas de compte secondaire 1"
                     try:
-                        newEleve.status2 = eleve['status2']
+                        newEleve.status2 = utilisateur['status2']
                     except KeyError:
                         newEleve.statutMsgCoaccount2 = "Pas de compte secondaire 2"
-
-                self.dictEleves[eleve['stamboeknummer']] = newEleve
+                
+                if self.isFieldValid():
+                    champIdentSS=self.dictConfig['champIdentSS']
+                    self.dictEleves[utilisateur[champIdentSS]] = newEleve
+                else:
+                    self.dictEleves[utilisateur['stamboeknummer']] = newEleve
+                
             for i in range(51):
                 prog.setValue(i+50)
                 QtWidgets.QApplication.processEvents()
@@ -318,7 +331,7 @@ class Gui(QtWidgets.QMainWindow):
         listElevesSansFichier = []
         for eleve in self.dictEleves.values():
             if eleve.filePath == "":
-                listElevesSansFichier.append(eleve.stamboeknummer)
+                listElevesSansFichier.append(eleve.champIdentSS)
         for elem in listElevesSansFichier:
             del self.dictEleves[elem]
     #
@@ -623,7 +636,7 @@ class Gui(QtWidgets.QMainWindow):
         
         #Champ d'identification dans SS : label
         mon_label = QtWidgets.QLabel(
-            "<p>Champ de SmartSchool utilisé pour reconnaitre les utilisateurs</p>")
+            "<p>Champ de SmartSchool utilisé pour identifier les utilisateurs</p>")
         mon_layout.addWidget(mon_label)
         
         #Champ d'identification dans SS : boite de saisie
@@ -635,7 +648,7 @@ class Gui(QtWidgets.QMainWindow):
         mon_layout.addWidget(self.saisieChampCorrespondanceSS)
         
         #les boutons enregistrer, fermer, tester
-        mon_bouton = QtWidgets.QPushButton('Enregistrer les valeurs')
+        mon_bouton = QtWidgets.QPushButton('Enregistrer les valeurs et rafraichir la liste')
         mon_bouton.clicked.connect(self.recordValue)
         mon_layout.addWidget(mon_bouton)
 
@@ -655,50 +668,93 @@ class Gui(QtWidgets.QMainWindow):
     def closeDialConfig(self):
         self.dialConfig.close()
     #
-
+    def isConfigChanged(self):
+        """
+        Renvoie True si la config donnée dans la boite de dialogue est différente de celle stockée dans le dictConfig, sinon renvoie false
+        """
+        change=False
+        if str(self.saisieUrl.text()) != self.dictConfig['urlEcole']:
+            change=True
+        if str(self.saisieApiKey.text()) != self.dictConfig['SSApiKey']:
+            change=True
+        if str(self.saisieInternummer.text()) != self.dictConfig['interNummerExpediteur']:
+            change=True
+        if str(self.saisieChampCorrespondanceSS.text()) != self.dictConfig['champIdentSS']:
+            change=True
+        return change
+            
+    def isFieldValid(self):
+        champIdentSS=self.dictConfig['champIdentSS']
+        for utilisateur in self.listUtilisateurs:
+            try:
+                utilisateur[champIdentSS]
+                valid=True
+            except:
+                valid=False
+        return valid
+        
+        
     def recordValue(self):
         """
-        Enregistre les valeurs de configuration dans un fichier JSON
+        Enregistre les valeurs de configuration dans un fichier JSON uniquement s'il y a une différence entre le dictConfig et les valeurs données dans la boite de dialogue de configuration
         """
-        TempDictConfig = {}
-        TempDictConfig["urlEcole"] = str(self.saisieUrl.text())
-        TempDictConfig["SSApiKey"] = str(self.saisieApiKey.text())
-        TempDictConfig["interNummerExpediteur"] = str(
-            self.saisieInternummer.text())
-        TempDictConfig["champIdentSS"] = str(self.saisieChampCorrespondanceSS.text())
-        myFile = open("config.json", "w")
-        myFile.write(json.dumps(TempDictConfig))
-        myFile.close()
-        self.getConfig()  # apres avoir enregistré les valeurs de config dansle fichier JSON, on génère le dictConfig
-        self.dialConfig.close()
+        if self.isConfigChanged() :
+            TempDictConfig = {}
+            TempDictConfig["urlEcole"] = str(self.saisieUrl.text())
+            TempDictConfig["SSApiKey"] = str(self.saisieApiKey.text())
+            TempDictConfig["interNummerExpediteur"] = str(
+                self.saisieInternummer.text())
+            TempDictConfig["champIdentSS"] = str(self.saisieChampCorrespondanceSS.text())
+            myFile = open("config.json", "w")
+            myFile.write(json.dumps(TempDictConfig))
+            myFile.close()
+            self.getConfig()  # apres avoir enregistré les valeurs de config dansle fichier JSON, on génère le dictConfig
+            self.refreshDictEleves() #il faut recharger les élèves au cas ou le champIdentSS a été placé sur une valeur non prévue au départ
+        valid=self.isFieldValid()
+        
+        if valid:
+            self.dialConfig.close()
+        else:
+            message="<p>Une erreur est survenue.</p>"
+            message+="<p>Le <b>champ de SmartSchool utilisé pour identifier les utilisateurs</b> tel que renseigné dans la configuration ne semble pas exister dans le profil des utilisateurs sur la plateforme SmartSchool de votre établissement.</p>"
+            QtWidgets.QMessageBox.warning(self, 'Echec', message)
+        return valid
     
     def testConfig(self):
         """
-        Teste la configuration en envoyant un message à la personne indiquée dans le champ 'expéditeur'.
+        Teste la configuration en envoyant un message avec une pièce jointe à la personne indiquée dans le champ 'expéditeur'.
         """
-        self.recordValue()
-        webservices = "https://" + self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl" #je crée le webservices et le client ici pour ne pas le recréer à chaque envoi dans la boucle d'envois
-        self.client = Client(webservices)
-        
-        with open('./test.pdf', "rb") as myFile:
-            encodedFile = base64.b64encode(myFile.read())
-        encodedFile = encodedFile.decode()  # on recupere la partie string du byte
-        attachment = [{"filename": 'test.pdf', "filedata": encodedFile}]
-        jsonAttachment = json.dumps(attachment)
-
+        valid=self.recordValue()
+        if valid:
+            webservices = "https://" + self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl" #je crée le webservices et le client ici pour ne pas le recréer à chaque envoi dans la boucle d'envois
+            self.client = Client(webservices)
             
-        fromaddr = self.dictConfig["interNummerExpediteur"]
-        toaddr = self.dictConfig["interNummerExpediteur"]
-        subject="Message de test"
-        body="<p>Ceci est un message de test.</p>"
-        result = self.client.service.sendMsg(self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, jsonAttachment, 0, 0)
-        if result==0:
-            QtWidgets.QMessageBox.information(self, 'Succès', "<p>Le message a bien été envoyé.</p>")
-        else:
-            message="<p>Une erreur est survenue.</p>"
-            message+="<p>"+self.dictError[str(result)]+"</p>"
-            QtWidgets.QMessageBox.warning(self, 'Echec', message)
+            try :
+                myFile=open('./test.pdf', "rb")
+                encodedFile = base64.b64encode(myFile.read())
+                encodedFile = encodedFile.decode()  # on recupere la partie string du byte
+                attachment = [{"filename": 'test.pdf', "filedata": encodedFile}]
+                jsonAttachment = json.dumps(attachment)
+                body="<p>Ceci est un message de test.</p>"
+                body+="<p>Il contient un fichier pdf en pièce jointe.</p>"
+                
+            except FileNotFoundError:
+                jsonAttachment=''
+                body="<p>Ceci est un message de test.</p>"
+                body+="<p>Il n'y a pas de fichier pdf en pièce jointe, le fichier 'test.pdf' n'est sans doute pas présent dans le répertoire où s'exécute le programme ayant envoyé ce emessage.</p>"
+                
+            fromaddr = self.dictConfig["interNummerExpediteur"]
+            toaddr = self.dictConfig["interNummerExpediteur"]
+            subject="Message de test"
             
+            result = self.client.service.sendMsg(self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, jsonAttachment, 0, 0)
+            if result==0:
+                QtWidgets.QMessageBox.information(self, 'Succès', "<p>Le message a bien été envoyé.</p>")
+            else:
+                message="<p>Une erreur est survenue.</p>"
+                message+="<p>"+self.dictError[str(result)]+"</p>"
+                QtWidgets.QMessageBox.warning(self, 'Echec', message)
+                
         
 
     ############################################
@@ -916,6 +972,7 @@ class Eleve():
         self.naam = ""
         self.internnummer = ""
         self.stamboeknummer = ""
+        self.champIdentSS=""
         self.filePath = ""
         self.status1 = ""
         self.status2 = ""
