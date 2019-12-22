@@ -254,13 +254,12 @@ class Gui(QtWidgets.QMainWindow):
             except Exception as e:
                 print('Erreur : %s' % e)
             
-            # recupération de la string JSON avec toutes les infos concernant les élèves, le 1 rend la fonction récurssive
-            result = client.service.getAllAccountsExtended(
-                self.dictConfig['SSApiKey'], self.dictConfig['gpEleves'], 1)
+            # recupération de la string JSON avec toutes les infos concernant les élèves, le 1 rend la fonction récurssive,la string vide comme deuxième argument a comme conséquence qu'on télécharge touts les utilisateurs de la plateforme et non un sous groupe comme "prof" ou "élèves"
+            result = client.service.getAllAccountsExtended(self.dictConfig['SSApiKey'], '', 1)
         
             # conversion de la string json en une liste de dict
             listEleve = json.loads(result)
-            print (listEleve)
+            #print (listEleve)
             
             # remplissage du dictEleves
             for eleve in listEleve:
@@ -326,7 +325,7 @@ class Gui(QtWidgets.QMainWindow):
 
     def changeDestinataire(self):
         """
-        Modifie les valeurs de sstatutMsgComptePrincipal, statutMsgCoaccount1 et statutMsgCoaccount2 
+        Modifie les valeurs de statutMsgComptePrincipal, statutMsgCoaccount1 et statutMsgCoaccount2 
         en fonction des valeurs des checkbox sendComptePrincipal et sendComptesSecondaires
         """
         for eleve in self.dictEleves.values():
@@ -361,9 +360,6 @@ class Gui(QtWidgets.QMainWindow):
             valide = 0
         if self.dictConfig["SSApiKey"] == "":
             alert += "<li>Vous n'avez pas configuré la <b>clè d'accès à l'API</b>.</li>"
-            valide = 0
-        if self.dictConfig["gpEleves"] == 0:
-            alert += "<li>Vous n'avez pas configuré le <b>nom du groupe</b> qui contient les élèves.</li>"
             valide = 0
         alert += "</ul></p></div>"
 
@@ -523,7 +519,7 @@ class Gui(QtWidgets.QMainWindow):
             TempDictConfig["urlEcole"] = ""
             TempDictConfig["SSApiKey"] = ""
             TempDictConfig["interNummerExpediteur"] = ""
-            TempDictConfig["gpEleves"] = ""
+            TempDictConfig["champIdentSS"] = ""
             myFile = open("config.json", "w")
             myFile.write(json.dumps(TempDictConfig))
             myFile.close()
@@ -532,7 +528,10 @@ class Gui(QtWidgets.QMainWindow):
         confJson = json.loads(confFile.read())
 
         # vérification du site web de l'école
-        self.dictConfig["urlEcole"] = confJson["urlEcole"]
+        try:
+            self.dictConfig["urlEcole"] = confJson["urlEcole"]
+        except KeyError:
+            self.dictConfig["urlEcole"] = ""
 
         # vérification de l'accès au site web de SS
         # cet accès est systématiquement vérifé à chaque fois qu'on fait appel à checkConfig
@@ -541,13 +540,22 @@ class Gui(QtWidgets.QMainWindow):
         #self.dictConfig["web"] = str(response)  # 0 down 1 up
 
         # vérification de la clé d'accès à l'APi_SS
-        self.dictConfig["SSApiKey"] = confJson["SSApiKey"]
+        try:
+            self.dictConfig["SSApiKey"] = confJson["SSApiKey"]
+        except KeyError:
+            self.dictConfig["SSApiKey"] = ""
 
         # vérification du internummer
-        self.dictConfig["interNummerExpediteur"] = confJson["interNummerExpediteur"]
-
-        # vérification du gpEleves
-        self.dictConfig["gpEleves"] = confJson["gpEleves"]
+        try:
+            self.dictConfig["interNummerExpediteur"] = confJson["interNummerExpediteur"]
+        except KeyError:
+            self.dictConfig["interNummerExpediteur"] = ""
+         
+        # vérification du champIdentSS
+        try:
+            self.dictConfig["champIdentSS"] = confJson["champIdentSS"]
+        except KeyError:
+            self.dictConfig["champIdentSS"] = ""
         
         #production du dictError
         self.getErrorCodeMessage()
@@ -571,32 +579,38 @@ class Gui(QtWidgets.QMainWindow):
         # ouvre la boite de dialogue
         self.dialConfig = QtWidgets.QDialog(parent=gui)
         mon_layout = QtWidgets.QVBoxLayout()  # création d'un layout vertical
-
+        
+        #Url du site de l'école : label
         mon_label = QtWidgets.QLabel("<p>Url du site SS de l'école</p>")
         mon_layout.addWidget(mon_label)
-
+        
+        #Url du site de l'école : boite de saisie
         self.saisieUrl = QtWidgets.QLineEdit()
         if self.dictConfig["urlEcole"] != "":
             self.saisieUrl.setText(self.dictConfig["urlEcole"])
         else:
             self.saisieUrl.setPlaceholderText("Ex. : mon_école.smartschool.be")
         mon_layout.addWidget(self.saisieUrl)
-
+        
+        #Clé d'accès à l'API : label
         mon_label = QtWidgets.QLabel("<p>Clé d'accès à l'API</p>")
         mon_layout.addWidget(mon_label)
-
+        
+        #Clé d'accès à l'API : boite de saisie
         self.saisieApiKey = QtWidgets.QLineEdit()
         if self.dictConfig["SSApiKey"] != "":
             self.saisieApiKey.setText(self.dictConfig["SSApiKey"])
         else:
             self.saisieApiKey.setPlaceholderText(
-                "Le code d'accèsà l'API de SmartSchool")
+                "Le code d'accès à l'API de SmartSchool")
         mon_layout.addWidget(self.saisieApiKey)
-
+        
+        #Numéro interne de l'expéditeur : label
         mon_label = QtWidgets.QLabel(
             "<p>Numéro interne SS de l'expéditeur</p>")
         mon_layout.addWidget(mon_label)
-
+        
+        #Numéro interne de l'expéditeur : boite de saisie
         self.saisieInternummer = QtWidgets.QLineEdit()
         if self.dictConfig["interNummerExpediteur"] != "":
             self.saisieInternummer.setText(
@@ -605,18 +619,22 @@ class Gui(QtWidgets.QMainWindow):
             self.saisieInternummer.setPlaceholderText(
                 "Numéro interne SmartSchool de l'expéditeur")
         mon_layout.addWidget(self.saisieInternummer)
-
+        
+        
+        #Champ d'identification dans SS : label
         mon_label = QtWidgets.QLabel(
-            "<p>Groupe des élèves dans SmartSchool</p>")
+            "<p>Champ de SmartSchool utilisé pour reconnaitre les utilisateurs</p>")
         mon_layout.addWidget(mon_label)
-
-        self.saisieGpEleves = QtWidgets.QLineEdit()
-        if self.dictConfig["gpEleves"] != "":
-            self.saisieGpEleves.setText(self.dictConfig["gpEleves"])
+        
+        #Champ d'identification dans SS : boite de saisie
+        self.saisieChampCorrespondanceSS = QtWidgets.QLineEdit()
+        if self.dictConfig["champIdentSS"] != "":
+            self.saisieChampCorrespondanceSS.setText(self.dictConfig["champIdentSS"])
         else:
-            self.saisieGpEleves.setPlaceholderText("Ex. Elèves")
-        mon_layout.addWidget(self.saisieGpEleves)
-
+            self.saisieChampCorrespondanceSS.setPlaceholderText("Normalement : stamboeknummer ou internnummer")
+        mon_layout.addWidget(self.saisieChampCorrespondanceSS)
+        
+        #les boutons enregistrer, fermer, tester
         mon_bouton = QtWidgets.QPushButton('Enregistrer les valeurs')
         mon_bouton.clicked.connect(self.recordValue)
         mon_layout.addWidget(mon_bouton)
@@ -647,7 +665,7 @@ class Gui(QtWidgets.QMainWindow):
         TempDictConfig["SSApiKey"] = str(self.saisieApiKey.text())
         TempDictConfig["interNummerExpediteur"] = str(
             self.saisieInternummer.text())
-        TempDictConfig["gpEleves"] = str(self.saisieGpEleves.text())
+        TempDictConfig["champIdentSS"] = str(self.saisieChampCorrespondanceSS.text())
         myFile = open("config.json", "w")
         myFile.write(json.dumps(TempDictConfig))
         myFile.close()
@@ -715,9 +733,6 @@ class Gui(QtWidgets.QMainWindow):
             valide = 0
         if self.dictConfig["interNummerExpediteur"] == "":
             alert += "<li>Vous n'avez pas configuré le <b>numéro interne</b> de l'expéditeur.</li>"
-            valide = 0
-        if self.dictConfig["gpEleves"] == 0:
-            alert += "<li>Vous n'avez pas configuré le <b>nom du groupe</b> qui contient les élèves.</li>"
             valide = 0
         if self.sujet.text() == "":  # or self.message.toHtml()=="":
             valide = 0
