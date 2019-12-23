@@ -10,3 +10,5 @@ permettre l'utilisation d'une regex pour faire un traiteent sur le nom du fichie
 
 important : revoir la fonction test : elle doit renvoyer une valeur si les test sont réussis, les test à effectuer doivent être définis et créés, l'envoi du message de test ne se fait que si les tests sont validés
 ces test sont à revoir en meêm temps que la fonction vérif avan envoi et vérif avant import
+
+je dois aussi vérifier que le champ utilisé soit unique, qu'il n'existe ps deux utilisateur ayant la même valeur pour ce champ, ce sera un test à créer en plus.

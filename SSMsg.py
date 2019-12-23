@@ -24,7 +24,7 @@ class Gui(QtWidgets.QMainWindow):
     def __init__(self):
         super(Gui, self).__init__()
         self.dictConfig = {}
-        self.dictEleves = {}
+        self.dictUtilisateurs = {}
         self.dictError = {}
         self.current_dir = os.path.expanduser("~")
         self.premierAffichage=True
@@ -81,12 +81,12 @@ class Gui(QtWidgets.QMainWindow):
         configAction.setStatusTip("Configurer ce logiciel")
         configAction.triggered.connect(self.openDialConfig)
 
-        # refreshDictAction : recharge le dictEleves depuis SS
+        # refreshDictAction : recharge le dictUtilisateurs depuis SS
         refreshAction = QtWidgets.QAction(QtGui.QIcon(
-            './icons/refresh.svg'), "Recharger liste élèves", self)
+            './icons/refresh.svg'), "Recharger liste utilisateurs", self)
         refreshAction.setStatusTip(
             "Recharger le dictionnaire depuis SmartSchool")
-        refreshAction.triggered.connect(self.refreshDictEleves)
+        refreshAction.triggered.connect(self.refreshDictUtilisateurs)
 
         # création d'une barre d'outil qui sera placée dans la fenetre principale
         self.toolbar = self.addToolBar('Toolbar')
@@ -219,10 +219,10 @@ class Gui(QtWidgets.QMainWindow):
        
 
     ####################################
-    #Fonctions concernant le dictEleves#
-    #prodDictEleves                    #
-    #cleanDictEleves                   #
-    #refreshDictEleves                 #
+    #Fonctions concernant le dictUtilisateurs#
+    #prodDictUtilisateurs                    #
+    #cleanDictUtilisateurs                   #
+    #refreshDictUtilisateurs                 #
     ####################################
     def getListUtilisateurs(self):
         webservices = "https://" + \
@@ -232,7 +232,7 @@ class Gui(QtWidgets.QMainWindow):
         except Exception as e:
             print('Erreur : %s' % e)
             
-        # recupération de la string JSON avec toutes les infos concernant les utilisateurs, le 1 rend la fonction récurssive,la string vide comme deuxième argument a comme conséquence qu'on télécharge touts les utilisateurs de la plateforme et non un sous groupe comme "prof" ou "élèves"
+        # recupération de la string JSON avec toutes les infos concernant les utilisateurs, le 1 rend la fonction récurssive,la string vide comme deuxième argument a comme conséquence qu'on télécharge touts les utilisateurs de la plateforme et non un sous groupe comme "prof" ou "utilisateurs"
         result = client.service.getAllAccountsExtended(self.dictConfig['SSApiKey'], '', 1)
         
         # conversion de la string json en une liste de dict
@@ -240,8 +240,8 @@ class Gui(QtWidgets.QMainWindow):
         #print(listUtilisateurs)
         return listUtilisateurs
         
-    def prodDictEleves(self):
-        """Production du dictEleves : un dict reprenant tous les élèves (obj)"""
+    def prodDictUtilisateurs(self):
+        """Production du dictUtilisateurs : un dict reprenant tous les utilisateurs (obj)"""
         
         try:
             prog = QtWidgets.QProgressDialog()
@@ -251,7 +251,7 @@ class Gui(QtWidgets.QMainWindow):
 
             prog.setCancelButton(None)
             prog.setLabel(QtWidgets.QLabel(
-                "<p>Récupération des élèves sur Smartschool</p><p>Veuillez patienter...</p>"))
+                "<p>Récupération des utilisateurs sur Smartschool</p><p>Veuillez patienter...</p>"))
             for i in range(50):
                 prog.setValue(i)
                 prog.show()
@@ -259,43 +259,43 @@ class Gui(QtWidgets.QMainWindow):
                 time.sleep(0.01)
                 QtWidgets.QApplication.processEvents()
 
-            dictEleves = {}
+            dictUtilisateurs = {}
 
             
             self.listUtilisateurs=self.getListUtilisateurs()
             
-            # remplissage du dictEleves
+            # remplissage du dictUtilisateurs
             for utilisateur in self.listUtilisateurs:
-                newEleve = Eleve()
-                newEleve.voornaam = utilisateur['voornaam']
-                newEleve.naam = utilisateur['naam']
-                newEleve.internnummer = utilisateur['internnummer']
-                newEleve.stamboeknummer = utilisateur['stamboeknummer']
+                newUtilisateur = Utilisateur()
+                newUtilisateur.voornaam = utilisateur['voornaam']
+                newUtilisateur.naam = utilisateur['naam']
+                newUtilisateur.internnummer = utilisateur['internnummer']
+                newUtilisateur.stamboeknummer = utilisateur['stamboeknummer']
                 try: #on tente de trouver le champ d'identification des utilisateurs donné par l'utilisateur du logiciel. Si ce champ n'existe pas ou n'a pas été défini on mets le stamboeknummer
                     #l'existence de ce champ sera testée lorsqu'on modifie la configuration
-                    newEleve.champIdentSS = utilisateur[self.dictConfig['champIdentSS']]
+                    newUtilisateur.champIdentSS = utilisateur[self.dictConfig['champIdentSS']]
                 except KeyError:
-                    newEleve.champIdentSS = utilisateur['stamboeknummer']
+                    newUtilisateur.champIdentSS = utilisateur['stamboeknummer']
                 if self.sendComptePrincipal.isChecked() == 0:
-                    newEleve.statutMsgComptePrincipal = "Non sélectionné"
+                    newUtilisateur.statutMsgComptePrincipal = "Non sélectionné"
                 if self.sendComptesSecondaires.isChecked() == 0:
-                    newEleve.statutMsgCoaccount1 = "Non sélectionné"
-                    newEleve.statutMsgCoaccount2 = "Non sélectionné"
+                    newUtilisateur.statutMsgCoaccount1 = "Non sélectionné"
+                    newUtilisateur.statutMsgCoaccount2 = "Non sélectionné"
                 else:
                     try:
-                        newEleve.status1 = utilisateur['status1']
+                        newUtilisateur.status1 = utilisateur['status1']
                     except KeyError:
-                        newEleve.statutMsgCoaccount1 = "Pas de compte secondaire 1"
+                        newUtilisateur.statutMsgCoaccount1 = "Pas de compte secondaire 1"
                     try:
-                        newEleve.status2 = utilisateur['status2']
+                        newUtilisateur.status2 = utilisateur['status2']
                     except KeyError:
-                        newEleve.statutMsgCoaccount2 = "Pas de compte secondaire 2"
+                        newUtilisateur.statutMsgCoaccount2 = "Pas de compte secondaire 2"
                 
                 if self.isFieldValid():
                     champIdentSS=self.dictConfig['champIdentSS']
-                    self.dictEleves[utilisateur[champIdentSS]] = newEleve
+                    self.dictUtilisateurs[utilisateur[champIdentSS]] = newUtilisateur
                 else:
-                    self.dictEleves[utilisateur['stamboeknummer']] = newEleve
+                    self.dictUtilisateurs[utilisateur['stamboeknummer']] = newUtilisateur
                 
             for i in range(51):
                 prog.setValue(i+50)
@@ -308,32 +308,32 @@ class Gui(QtWidgets.QMainWindow):
                 print("Le fichier reçu n'est pas un fichier JSON.")
                 print("Vous avez reçu un message d'erreur en provenance de l'API-SS.")
                 print("Message d'erreur reçu :", self.dictError[str(result)])
-                msgError="<p>Il n'a pas été possible de récupérer la liste des élèves sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p><p>Vous avez reçu un message d'erreur en provenance de l'API-SS.</p><p>Message d'erreur reçu :  %s </p>" %self.dictError[str(result)]
-                QtWidgets.QMessageBox.warning(self, 'Erreur récupération élèves',msgError)
+                msgError="<p>Il n'a pas été possible de récupérer la liste des utilisateurs sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p><p>Vous avez reçu un message d'erreur en provenance de l'API-SS.</p><p>Message d'erreur reçu :  %s </p>" %self.dictError[str(result)]
+                QtWidgets.QMessageBox.warning(self, 'Erreur récupération utilisateurs',msgError)
         
         except Exception as e:
 
             # self.dialPatientez.close()
-            QtWidgets.QMessageBox.warning(self, 'Erreur récupération élèves',
-                                          "<p>Il n'a pas été possible de récupérer la liste des élèves sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p>")
+            QtWidgets.QMessageBox.warning(self, 'Erreur récupération utilisateurs',
+                                          "<p>Il n'a pas été possible de récupérer la liste des utilisateurs sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p>")
             print('Erreur : %s' % e)
             print('Message : ', traceback.format_exc())
     #
 
-    def refreshDictEleves(self):
-        """Retélécharge le dictEleves puis mets à jour la liste affichée dans le tableau"""
-        self.prodDictEleves()
+    def refreshDictUtilisateurs(self):
+        """Retélécharge le dictUtilisateurs puis mets à jour la liste affichée dans le tableau"""
+        self.prodDictUtilisateurs()
         self.updateFileList()
     #
 
-    def cleanDictEleves(self):
-        """Retire du dictEleves tous les élèves pour lesquels il n'y a pas ou plus de fichier à envoyer"""
-        listElevesSansFichier = []
-        for eleve in self.dictEleves.values():
-            if eleve.filePath == "":
-                listElevesSansFichier.append(eleve.champIdentSS)
-        for elem in listElevesSansFichier:
-            del self.dictEleves[elem]
+    def cleanDictUtilisateurs(self):
+        """Retire du dictUtilisateurs tous les utilisateurs pour lesquels il n'y a pas ou plus de fichier à envoyer"""
+        listUtilisateursSansFichier = []
+        for utilisateur in self.dictUtilisateurs.values():
+            if utilisateur.filePath == "":
+                listUtilisateursSansFichier.append(utilisateur.champIdentSS)
+        for elem in listUtilisateursSansFichier:
+            del self.dictUtilisateurs[elem]
     #
 
     def changeDestinataire(self):
@@ -341,18 +341,18 @@ class Gui(QtWidgets.QMainWindow):
         Modifie les valeurs de statutMsgComptePrincipal, statutMsgCoaccount1 et statutMsgCoaccount2 
         en fonction des valeurs des checkbox sendComptePrincipal et sendComptesSecondaires
         """
-        for eleve in self.dictEleves.values():
+        for utilisateur in self.dictUtilisateurs.values():
             if self.sendComptePrincipal.isChecked():
-                eleve.statutMsgComptePrincipal = "En attente"
+                utilisateur.statutMsgComptePrincipal = "En attente"
             else:
-                eleve.statutMsgComptePrincipal = "Non sélectionné"
+                utilisateur.statutMsgComptePrincipal = "Non sélectionné"
 
             if self.sendComptesSecondaires.isChecked():
-                eleve.statutMsgCoaccount1 = "En attente"
-                eleve.statutMsgCoaccount2 = "En attente"
+                utilisateur.statutMsgCoaccount1 = "En attente"
+                utilisateur.statutMsgCoaccount2 = "En attente"
             else:
-                eleve.statutMsgCoaccount1 = "Non sélectionné"
-                eleve.statutMsgCoaccount2 = "Non sélectionné"
+                utilisateur.statutMsgCoaccount1 = "Non sélectionné"
+                utilisateur.statutMsgCoaccount2 = "Non sélectionné"
         self.updateFileList()
 
     #############################################################################
@@ -401,26 +401,26 @@ class Gui(QtWidgets.QMainWindow):
                 # récupère le nom du fichier avec son extension
                 fileName = os.path.basename(filePath)
                 fileName = os.path.splitext(fileName)[0]#on récupère le nom sans l'extension
-                fileName=fileName.split('_')[0]#le nom du fichier peut contenir autre chose que le matricule de l'élève mais il doit commencer par celui-ci et le reste du nom doit être séparé du matricule par le symbole "_"
-                # à chaque élève du dictEleves pour lequel il y a un fichier, j'ajoute le path vers ce fichier
-                self.dictEleves[fileName].filePath = filePath
+                fileName=fileName.split('_')[0]#le nom du fichier peut contenir autre chose que le matricule de l'utilisateur mais il doit commencer par celui-ci et le reste du nom doit être séparé du matricule par le symbole "_"
+                # à chaque utilisateur du dictUtilisateurs pour lequel il y a un fichier, j'ajoute le path vers ce fichier
+                self.dictUtilisateurs[fileName].filePath = filePath
             except KeyError:
                 alert = "<div><p>Aucune correspondance n'a été trouvée pour le fichier avec le numéro %s</p>" % (
                     os.path.splitext(fileName)[0])
-                alert += "<p>Vérifiez que ce numéro correspond à un <b>matricule élève</b>.</p>"
+                alert += "<p>Vérifiez que ce numéro correspond à un <b>matricule utilisateur</b>.</p>"
                 alert += "<p>Vérifiez que ce numéro est convenablement encodé dans <b>Smartschool</b>.</p></div>"
                 QtWidgets.QMessageBox.warning(
                     self, 'Aucune correspondance', alert)
         self.updateFileList()
 
     #####################################################################################
-    #Fonctions concernant l'affichage de la liste des élèves à qui on envoie un message #
+    #Fonctions concernant l'affichage de la liste des utilisateurs à qui on envoie un message #
     #updateFileList                                                                     #
     #removeFile                                                                         #
     #####################################################################################
     def updateFileList(self):
         """
-        Mets à jour le tableau présentant la liste des fichiers, le nom des élèves et le statut du message 
+        Mets à jour le tableau présentant la liste des fichiers, le nom des utilisateurs et le statut du message 
         """
         try:
             self.dockWidgetList.setParent(None)
@@ -446,7 +446,7 @@ class Gui(QtWidgets.QMainWindow):
         self.tableWidget.setColumnCount(5)
         self.tableWidget.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
         self.tableWidget.setHorizontalHeaderLabels(
-            ['Nom du fichier', "Nom et prénom de l'élève", "Statut compte principal", "Statut compte sec. 1", "Statut compte sec. 2"])
+            ['Nom du fichier', "Nom et prénom de l'utilisateur", "Statut compte principal", "Statut compte sec. 1", "Statut compte sec. 2"])
         
         self.tableWidget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
         self.tableWidget.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
@@ -454,17 +454,17 @@ class Gui(QtWidgets.QMainWindow):
         self.tableWidget.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
         self.tableWidget.horizontalHeader().setSectionResizeMode(4, QtWidgets.QHeaderView.Stretch)
         # creation du tableau : contenu
-        for eleve in self.dictEleves.values():
-            if eleve.filePath != "":
-                itemFileName = QtWidgets.QTableWidgetItem(os.path.basename(eleve.filePath))
-                nomPrenom = eleve.naam+"_"+eleve.voornaam
+        for utilisateur in self.dictUtilisateurs.values():
+            if utilisateur.filePath != "":
+                itemFileName = QtWidgets.QTableWidgetItem(os.path.basename(utilisateur.filePath))
+                nomPrenom = utilisateur.naam+"_"+utilisateur.voornaam
                 itemNomPrenom = QtWidgets.QTableWidgetItem(nomPrenom)
                 itemStatutMsgPrinc = QtWidgets.QTableWidgetItem(
-                    eleve.statutMsgComptePrincipal)
+                    utilisateur.statutMsgComptePrincipal)
                 itemStatutMsg1 = QtWidgets.QTableWidgetItem(
-                    eleve.statutMsgCoaccount1)
+                    utilisateur.statutMsgCoaccount1)
                 itemStatutMsg2 = QtWidgets.QTableWidgetItem(
-                    eleve.statutMsgCoaccount2)
+                    utilisateur.statutMsgCoaccount2)
 
                 self.tableWidget.insertRow(self.tableWidget.rowCount())
                 self.tableWidget.setItem(
@@ -503,9 +503,9 @@ class Gui(QtWidgets.QMainWindow):
         try:
             currentRow = self.tableWidget.currentRow()
             name = self.tableWidget.item(currentRow, 0).data(0)
-            for eleve in self.dictEleves.values():
-                if os.path.basename(eleve.filePath)==name:
-                    eleve.filePath = ""
+            for utilisateur in self.dictUtilisateurs.values():
+                if os.path.basename(utilisateur.filePath)==name:
+                    utilisateur.filePath = ""
         except AttributeError : #s'il n'y a pas de ligne dans le tableau
             pass
         except Exception as e:
@@ -573,11 +573,11 @@ class Gui(QtWidgets.QMainWindow):
         #production du dictError
         self.getErrorCodeMessage()
 
-        # vérification du dictEleves, production si nécessaire
-        # le dict élèves est long à produire et il n'est pas nécessaire de le produire à chaque appel à checkConfig
+        # vérification du dictUtilisateurs, production si nécessaire
+        # le dict utilisateurs est long à produire et il n'est pas nécessaire de le produire à chaque appel à checkConfig
         # il sera produit une fois lorsque le programme commence et il ne sera produit après que si il est vide
-        if self.dictEleves == {}:  # si le dict est vide, on le produit
-            self.prodDictEleves()
+        if self.dictUtilisateurs == {}:  # si le dict est vide, on le produit
+            self.prodDictUtilisateurs()
     #
 
     def openDialConfig(self):
@@ -709,7 +709,7 @@ class Gui(QtWidgets.QMainWindow):
             myFile.write(json.dumps(TempDictConfig))
             myFile.close()
             self.getConfig()  # apres avoir enregistré les valeurs de config dansle fichier JSON, on génère le dictConfig
-            self.refreshDictEleves() #il faut recharger les élèves au cas ou le champIdentSS a été placé sur une valeur non prévue au départ
+            self.refreshDictUtilisateurs() #il faut recharger les utilisateurs au cas ou le champIdentSS a été placé sur une valeur non prévue au départ
         valid=self.isFieldValid()
         
         if valid:
@@ -720,6 +720,18 @@ class Gui(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, 'Echec', message)
         return valid
     
+    
+    def isConfigValid(self):
+        """On vérifie si les différents paramètres possèdent une valeur, pas si cette valeur est la bonne"""
+        self.isUrlEcoleValid() #
+        self.isSSApiKeyValid() #
+        self.isInterNummerExpediteurValid()
+        self.isChampIdentSSValid()
+    
+    def isChampIdentSSValid(self):
+        self.isChampIdentSSUnique() #on crée une lsite avec toutes les valeurs de ce champs et on compare sa taille à un set créé à partir de la liste
+        self.doesChampIdentSSExist() #déjà fait, à déplacer
+        
     def testConfig(self):
         """
         Teste la configuration en envoyant un message avec une pièce jointe à la personne indiquée dans le champ 'expéditeur'.
@@ -766,11 +778,11 @@ class Gui(QtWidgets.QMainWindow):
     ############################################
     def verifAvantEnvoi(self):
         """Vérifie que tout est en ordre avant d'envoyer les fichiers"""
-        self.getConfig()  # je refais un getConfig ici car après un permier envoie le dictEleves est vidé et il faut le recharger depuis SS. La fonction getConfig recharge le dictEleves si il est vide
+        self.getConfig()  # je refais un getConfig ici car après un permier envoie le dictUtilisateurs est vidé et il faut le recharger depuis SS. La fonction getConfig recharge le dictUtilisateurs si il est vide
 
         noFile = 1
-        for eleve in self.dictEleves.values():  # on vérifie s'il y a au moins un fichier à envoyer
-            if eleve.filePath != "":
+        for utilisateur in self.dictUtilisateurs.values():  # on vérifie s'il y a au moins un fichier à envoyer
+            if utilisateur.filePath != "":
                 noFile = 0
 
         alert = "<div><p>Vous voulez envoyer les messages mais :<ul>"
@@ -813,16 +825,16 @@ class Gui(QtWidgets.QMainWindow):
                 print('Erreur : %s' % e)
                 print('Message : ', traceback.format_exc())
     #
-    def getAttachementName(self , eleve):
-        """Reçois un élève comme argument et renvoit un nom formé à partir des données de l'élève et respectant le motif donné dans les paramètres de renommage"""
+    def getAttachementName(self , utilisateur):
+        """Reçois un utilisateur comme argument et renvoit un nom formé à partir des données de l'utilisateur et respectant le motif donné dans les paramètres de renommage"""
         attachmentName=[]
         listMotif=self.renamePattern.text().split(';')
         for elem in listMotif:
             elem=elem.replace(' ','')
             if elem=='%nom':
-                attachmentName.append(eleve.naam)
+                attachmentName.append(utilisateur.naam)
             elif elem=='%prenom':
-                attachmentName.append(eleve.voornaam)
+                attachmentName.append(utilisateur.voornaam)
             else:
                 attachmentName.append(elem)
         attachmentName.append('.pdf')
@@ -830,14 +842,14 @@ class Gui(QtWidgets.QMainWindow):
         return(attachmentName)
                 
                 
-    def sendMsg(self, eleve):
-        """envoie le fichier fileName(str) à l'élève eleve(obj) """
+    def sendMsg(self, utilisateur):
+        """envoie le fichier fileName(str) à l'utilisateur utilisateur(obj) """
         if self.Renommer.isChecked():
-            attachmentName=self.getAttachementName(eleve)
+            attachmentName=self.getAttachementName(utilisateur)
         else:
-            attachmentName=os.path.basename(eleve.filePath)
-        #attachmentName = eleve.naam+"_"+eleve.voornaam+".pdf"
-        with open(eleve.filePath, "rb") as myFile:
+            attachmentName=os.path.basename(utilisateur.filePath)
+        #attachmentName = utilisateur.naam+"_"+utilisateur.voornaam+".pdf"
+        with open(utilisateur.filePath, "rb") as myFile:
             encodedFile = base64.b64encode(myFile.read())
         encodedFile = encodedFile.decode()  # on recupere la partie string du byte
         attachment = [{"filename": attachmentName, "filedata": encodedFile}]
@@ -845,7 +857,7 @@ class Gui(QtWidgets.QMainWindow):
         jsonAttachment = json.dumps(attachment)
 
         fromaddr = self.dictConfig["interNummerExpediteur"]
-        toaddr = eleve.internnummer
+        toaddr = utilisateur.internnummer
         subject = self.sujet.text()
 
         body = self.message.toHtml()
@@ -853,29 +865,29 @@ class Gui(QtWidgets.QMainWindow):
             result0 = self.client.service.sendMsg(
                 self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, jsonAttachment, 0, 0)
             if result0 == 0:
-                eleve.statutMsgComptePrincipal = "Envoyé"
+                utilisateur.statutMsgComptePrincipal = "Envoyé"
             else:
-                eleve.statutMsgComptePrincipal = "Échec"
+                utilisateur.statutMsgComptePrincipal = "Échec"
         else:
             result0 = 0  # s'il n'y a pas de message à envoyer au compte principal, il n'y a donc pas d'erreur liée à cet envoi
 
         if self.sendComptesSecondaires.isChecked():
-            if eleve.status1 == "actief":
+            if utilisateur.status1 == "actief":
                 result1 = self.client.service.sendMsg(
                     self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, jsonAttachment, 1, 0)
                 if result1 == 0:
-                    eleve.statutMsgCoaccount1 = "Envoyé"
+                    utilisateur.statutMsgCoaccount1 = "Envoyé"
                 else:
-                    eleve.statutMsgCoaccount1 = "Échec"
+                    utilisateur.statutMsgCoaccount1 = "Échec"
             else:
                 result1 = 0  # s'il n'y a pas de compte secondaire 1, il n'y a pas d'erreur liée à l'envoi sur ce compte
-            if eleve.status2 == "actief":
+            if utilisateur.status2 == "actief":
                 result2 = self.client.service.sendMsg(
                     self.dictConfig["SSApiKey"], toaddr, subject, body, fromaddr, jsonAttachment, 2, 0)
                 if result2 == 0:
-                    eleve.statutMsgCoaccount2 = "Envoyé"
+                    utilisateur.statutMsgCoaccount2 = "Envoyé"
                 else:
-                    eleve.statutMsgCoaccount2 = "Échec"
+                    utilisateur.statutMsgCoaccount2 = "Échec"
             else:
                 result2 = 0  # s'il n'y a pas de compte secondaire 2, il n'y a pas d'erreur liée à l'envoi sur ce compte
         else:
@@ -886,13 +898,13 @@ class Gui(QtWidgets.QMainWindow):
         if (result0 == 0) & (result1 == 0) & (result2 == 0):
             # get the path to the file in the current directory
             # on récupère le path du fichier
-            src = os.path.dirname(eleve.filePath)
+            src = os.path.dirname(utilisateur.filePath)
             # rename the original file
             # on produit le nouveau nom du fichier
             newName = os.path.join(src, attachmentName)
             if self.Renommer.isChecked():
-                os.rename(eleve.filePath, newName)  # on renomme le fichier si on a demandé de renommer
-            eleve.filePath = ""  # on supprime le fichier à envoyer de l'objet Eleve
+                os.rename(utilisateur.filePath, newName)  # on renomme le fichier si on a demandé de renommer
+            utilisateur.filePath = ""  # on supprime le fichier à envoyer de l'objet Utilisateur
 
         self.updateFileList()
         QtWidgets.QApplication.processEvents()
@@ -914,15 +926,15 @@ class Gui(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(
                 self, 'Pas de sujet - pas de message', alert)
         else:
-            self.cleanDictEleves()
+            self.cleanDictUtilisateurs()
             webservices = "https://" + self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl" #je crée le webservices et le client ici pour ne pas le recréer à chaque envoi dans la boucle d'envois
             self.client = Client(webservices)
 
-            for eleve in self.dictEleves.values():
-                self.sendMsg(eleve)
-        self.cleanDictEleves()
-        if self.dictEleves == {}:
-            message = "<div><p>Tous les documents ont été envoyés avec succès.</p><p>Si vous importez de nouveaux fichiers la liste des élèves sera à nouveau importée.</p></div>"
+            for utilisateur in self.dictUtilisateurs.values():
+                self.sendMsg(utilisateur)
+        self.cleanDictUtilisateurs()
+        if self.dictUtilisateurs == {}:
+            message = "<div><p>Tous les documents ont été envoyés avec succès.</p><p>Si vous importez de nouveaux fichiers la liste des utilisateurs sera à nouveau importée.</p></div>"
             QtWidgets.QMessageBox.information(self, 'Envoi terminé', message)
 
     #########################################################
@@ -937,7 +949,7 @@ class Gui(QtWidgets.QMainWindow):
         """
         message = '<div><p><b>SSMsg</b> est un outil '
         message += "permettant d'envoyer des fichiers par lots. L'envoi se fait  sur la plateforme SmartSchool via un message accompagné d'une pièce jointe.</p>"
-        message += "<p>Ce programme renomme également les fichiers en leur donnant le nom et le prénom de l'élève concerné par le fichier.</p><p> <b>Auteur : </b>J.N. Gautier</p>"
+        message += "<p>Ce programme renomme également les fichiers en leur donnant le nom et le prénom de l'utilisateur concerné par le fichier.</p><p> <b>Auteur : </b>J.N. Gautier</p>"
         message += "<p> <b>Language : </b>Python %s</p>  <p> <b>Interface : </b>Qt %s</p> <p> Pour signaler un bug ou proposer une amélioration, <br/>" % (
             platform.python_version(), QtCore.QT_VERSION_STR)
         message += 'vous pouvez me contacter sur Github.</p></div>'
@@ -952,7 +964,7 @@ class Gui(QtWidgets.QMainWindow):
         message += '<div><p>Le profil du service Web utilisé pour cette application doit être configuré avec au minimum les méthodes autorisées :'
         message += "<ul><li>getAllAccountsExtended</li><li> sendMsg</li></ul></p>"
         message += "<p>Pour plus d'informations  sur les profils de service web et les méthodes autorisées, veuillez vous référer à la <b>documentation de SmartSchool</b>.</p>"
-        message += "<p>Le nom des fichiers à envoyer doit correspondre au matricule de l'élève, encodé dans le champ <b>stamboeknummer</b> de SmartSchool.</p>"
+        message += "<p>Le nom des fichiers à envoyer doit correspondre au matricule de l'utilisateur, encodé dans le champ <b>stamboeknummer</b> de SmartSchool.</p>"
         message += "<div><p>Pour obtenir de l'aide conçernant l'emploi de ce logiciel "
         message += "vous pouvez me contacter sur Github.</p></div>"
         QtWidgets.QMessageBox.information(self, 'Aide', message)
@@ -966,7 +978,7 @@ class Gui(QtWidgets.QMainWindow):
         app.quit()
 
 
-class Eleve():
+class Utilisateur():
     def __init__(self):
         self.voornaam = ""
         self.naam = ""
