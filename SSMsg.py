@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -188,6 +188,15 @@ class Gui(QtWidgets.QMainWindow):
         # placement du dock dans la fenêtre, à gauche
         self.addDockWidget(QtCore.Qt.LeftDockWidgetArea, dockWidgetRename)
 
+    def SSApiClient(self):
+        """Crée un client pour l'APi_SS et renvoie celui-ci"""
+        webservices = "https://" + self.dictConfig["urlEcole"] + "/Webservices/V3?wsdl"
+        try:
+            client = Client(webservices)
+        except Exception as e:
+            print('Erreur : %s' % e)
+        return client
+    
     def ping(host):
         """
         Returns True if host (str) responds to a ping request.
@@ -205,16 +214,14 @@ class Gui(QtWidgets.QMainWindow):
     
     def getErrorCodeMessage(self):
         """Création du dictError, un dict qui a comme clé les codes d'erreur et comme valeur la signification de ces codes"""
-        webservices = "https://" + \
-                self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl"
+        
         try:
-            client = Client(webservices)
-        except NewConnectionError:
-            pass
-        except Exception as e:
-            print('Erreur : %s' % e)
+            self.client
+        except:
+            self.client=self.SSApiClient()
+        
         #recupération des codes d'erreurs et production du dict pour interpréter ces codes
-        result =client.service.returnJsonErrorCodes()
+        result =self.client.service.returnJsonErrorCodes()
         self.dictError=json.loads(result)
        
 
@@ -225,24 +232,33 @@ class Gui(QtWidgets.QMainWindow):
     #refreshDictUtilisateurs                 #
     ####################################
     def getListUtilisateurs(self):
-        webservices = "https://" + \
-                self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl"
+        """
+        Récupère les liste de tous les utilisateurs de la plateforme avec toutes les nformations sur ces utilisateurs, renvoie une liste dont chaque élément est un dict
+        """
         try:
-            client = Client(webservices)
-        except Exception as e:
-            print('Erreur : %s' % e)
+            self.client
+        except:
+            self.client=self.SSApiClient()
+        
             
-        # recupération de la string JSON avec toutes les infos concernant les utilisateurs, le 1 rend la fonction récurssive,la string vide comme deuxième argument a comme conséquence qu'on télécharge touts les utilisateurs de la plateforme et non un sous groupe comme "prof" ou "utilisateurs"
-        result = client.service.getAllAccountsExtended(self.dictConfig['SSApiKey'], '', 1)
+        # recupération de la string JSON avec toutes les infos concernant les utilisateurs, le 1 rend la fonction récurssive,la string vide comme deuxième argument a comme conséquence qu'on télécharge touts les utilisateurs de la plateforme et non un sous groupe comme "prof" ou "élèves"
+        result = self.client.service.getAllAccountsExtended(self.dictConfig['SSApiKey'], '', 1)
         
         # conversion de la string json en une liste de dict
-        listUtilisateurs = json.loads(result)
+        try:
+            listUtilisateurs = json.loads(result)
+        except TypeError:
+            if isinstance(result, int):
+                print("Le fichier reçu n'est pas un fichier JSON.")
+                print("Vous avez reçu un message d'erreur en provenance de l'API-SS.")
+                print("Message d'erreur reçu :", self.dictError[str(result)])
+                msgError="<p>Il n'a pas été possible de récupérer la liste des utilisateurs sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p><p>Vous avez reçu un message d'erreur en provenance de l'API-SS.</p><p>Message d'erreur reçu :  %s </p>" %self.dictError[str(result)]
+                QtWidgets.QMessageBox.warning(self, 'Erreur récupération utilisateurs',msgError)
         #print(listUtilisateurs)
         return listUtilisateurs
         
     def prodDictUtilisateurs(self):
         """Production du dictUtilisateurs : un dict reprenant tous les utilisateurs (obj)"""
-        
         try:
             prog = QtWidgets.QProgressDialog()
             prog.setWindowFlags(QtCore.Qt.SplashScreen |
@@ -271,8 +287,7 @@ class Gui(QtWidgets.QMainWindow):
                 newUtilisateur.naam = utilisateur['naam']
                 newUtilisateur.internnummer = utilisateur['internnummer']
                 newUtilisateur.stamboeknummer = utilisateur['stamboeknummer']
-                try: #on tente de trouver le champ d'identification des utilisateurs donné par l'utilisateur du logiciel. Si ce champ n'existe pas ou n'a pas été défini on mets le stamboeknummer
-                    #l'existence de ce champ sera testée lorsqu'on modifie la configuration
+                try: #on tente de trouver le champ d'identification des utilisateurs donné par l'utilisateur du logiciel. Si ce champ n'existe pas ou n'a pas été défini on mets le stamboeknummer. l'existence de ce champ sera testée lorsqu'on modifie la configuration
                     newUtilisateur.champIdentSS = utilisateur[self.dictConfig['champIdentSS']]
                 except KeyError:
                     newUtilisateur.champIdentSS = utilisateur['stamboeknummer']
@@ -291,7 +306,7 @@ class Gui(QtWidgets.QMainWindow):
                     except KeyError:
                         newUtilisateur.statutMsgCoaccount2 = "Pas de compte secondaire 2"
                 
-                if self.isFieldValid():
+                if self.doesChampIdentSSExist():
                     champIdentSS=self.dictConfig['champIdentSS']
                     self.dictUtilisateurs[utilisateur[champIdentSS]] = newUtilisateur
                 else:
@@ -303,29 +318,18 @@ class Gui(QtWidgets.QMainWindow):
                 # ce temps d'attente ne sert à rien mais il évite de voir la barre de progression disparaitre subitement
                 time.sleep(0.01)
         
-        except TypeError:
-            if isinstance(result, int):
-                print("Le fichier reçu n'est pas un fichier JSON.")
-                print("Vous avez reçu un message d'erreur en provenance de l'API-SS.")
-                print("Message d'erreur reçu :", self.dictError[str(result)])
-                msgError="<p>Il n'a pas été possible de récupérer la liste des utilisateurs sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p><p>Vous avez reçu un message d'erreur en provenance de l'API-SS.</p><p>Message d'erreur reçu :  %s </p>" %self.dictError[str(result)]
-                QtWidgets.QMessageBox.warning(self, 'Erreur récupération utilisateurs',msgError)
         
         except Exception as e:
-
-            # self.dialPatientez.close()
-            QtWidgets.QMessageBox.warning(self, 'Erreur récupération utilisateurs',
-                                          "<p>Il n'a pas été possible de récupérer la liste des utilisateurs sur SmartSchool. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p>")
+            QtWidgets.QMessageBox.warning(self, 'Erreur création du dictUtilisateurs',
+                                          "<p>Il n'a pas été possible de créer le dictionnaire des utilisateurs. </p><p>Vérifiez la <b>configuration</b> du logiciel et refaites une tentative. </p><p>Si cette erreur persiste, contactez le développeur.</p>")
             print('Erreur : %s' % e)
             print('Message : ', traceback.format_exc())
     #
-
     def refreshDictUtilisateurs(self):
         """Retélécharge le dictUtilisateurs puis mets à jour la liste affichée dans le tableau"""
         self.prodDictUtilisateurs()
         self.updateFileList()
     #
-
     def cleanDictUtilisateurs(self):
         """Retire du dictUtilisateurs tous les utilisateurs pour lesquels il n'y a pas ou plus de fichier à envoyer"""
         listUtilisateursSansFichier = []
@@ -335,7 +339,6 @@ class Gui(QtWidgets.QMainWindow):
         for elem in listUtilisateursSansFichier:
             del self.dictUtilisateurs[elem]
     #
-
     def changeDestinataire(self):
         """
         Modifie les valeurs de statutMsgComptePrincipal, statutMsgCoaccount1 et statutMsgCoaccount2 
@@ -362,33 +365,29 @@ class Gui(QtWidgets.QMainWindow):
     #############################################################################
     def verifAvantImport(self):
         """Vérifie que tous est en ordre avant d'importer des fichiers"""
-        self.getConfig()
+        valid , message = self.isConfigValid()
         alert = "<div><p>Vous voulez importer les fichiers mais :<ul>"
-        valide = 1
-        #if self.dictConfig["web"] == 0:
-        #alert += "<li>Vous ne semblez pas connecté à  <b>internet</b></li>"
-        #    valide = 0
-        if self.dictConfig["urlEcole"] == "":
-            alert += "<li>Vous n'avez pas configuré l'<b>adresse SmartSchool</b> de votre école.</li>"
-            valide = 0
-        if self.dictConfig["SSApiKey"] == "":
-            alert += "<li>Vous n'avez pas configuré la <b>clè d'accès à l'API</b>.</li>"
-            valide = 0
+        alert += message
         alert += "</ul></p></div>"
 
-        if valide == 0:
-            QtWidgets.QMessageBox.warning(
-                self, 'Logiciel non configuré', alert)
+        if not valid :
+            QtWidgets.QMessageBox.warning(self, 'Logiciel non configuré', alert)
         else:
+            #production du dictConfig
+            self.getConfig()
+            #production du dictError
+            self.getErrorCodeMessage()
+            # vérification du dictUtilisateurs, production si nécessaire
+            if self.dictUtilisateurs == {}:  # si le dict est vide, on le produit
+                self.prodDictUtilisateurs()
             try:
                 self.importFilesDialog()
             except Exception as e:
                 QtWidgets.QMessageBox.warning(
-                    self, 'Erreur critique', "<p>Une erreur critique s'est produite, contactez le développeur.</p>")
+                    self, 'Erreur critique', "<p>Une erreur critique s'est produite lors de l'importation des documents, contactez le développeur.</p>")
                 print('Erreur : %s' % e)
                 print('Message : ', traceback.format_exc())
     #
-
     def importFilesDialog(self):
         """
         Ouvre une boite de dialogue pour sélectionner les fichiers pdf
@@ -407,7 +406,7 @@ class Gui(QtWidgets.QMainWindow):
             except KeyError:
                 alert = "<div><p>Aucune correspondance n'a été trouvée pour le fichier avec le numéro %s</p>" % (
                     os.path.splitext(fileName)[0])
-                alert += "<p>Vérifiez que ce numéro correspond à un <b>matricule utilisateur</b>.</p>"
+                alert += "<p>Vérifiez que ce numéro correspond à la <b>valeur du champ de correspondance</b> pour cet utilisateur</b>.</p>"
                 alert += "<p>Vérifiez que ce numéro est convenablement encodé dans <b>Smartschool</b>.</p></div>"
                 QtWidgets.QMessageBox.warning(
                     self, 'Aucune correspondance', alert)
@@ -495,7 +494,6 @@ class Gui(QtWidgets.QMainWindow):
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dockWidgetList)
         
 
-
     def removeFile(self):
         """
         Le fichier correspondant à la ligne active est retiré de la liste des fichiers à traiter
@@ -524,7 +522,7 @@ class Gui(QtWidgets.QMainWindow):
     #recordValue                           #
     ########################################
     def getConfig(self):
-        """Récupère les informations de configuration dans le fichier json, crée ce fichier s'il est absent, récupère d'autres paramètres de configuration"""
+        """Récupère les informations de configuration dans le fichier json, crée ce fichier s'il est absent, donne une valeur vide aux paramètres qui ne seraient pas présents"""
         try:
             confFile = open("config.json", "r")
         except FileNotFoundError:
@@ -570,16 +568,121 @@ class Gui(QtWidgets.QMainWindow):
         except KeyError:
             self.dictConfig["champIdentSS"] = ""
         
-        #production du dictError
-        self.getErrorCodeMessage()
-
-        # vérification du dictUtilisateurs, production si nécessaire
-        # le dict utilisateurs est long à produire et il n'est pas nécessaire de le produire à chaque appel à checkConfig
-        # il sera produit une fois lorsque le programme commence et il ne sera produit après que si il est vide
-        if self.dictUtilisateurs == {}:  # si le dict est vide, on le produit
-            self.prodDictUtilisateurs()
+        
     #
+    def isConfigValid(self):
+        """
+        Vérifie si les différents paramètres possèdent une valeur, pas si cette valeur est la bonne.
+        En fonction des paramètres qui ne sont pas configurés, un message d'erreur est généré.
+        La fonction renvoie True si les paramètres sont configurés, False sinon. 
+        Elle renvoie aussi le message d'erreur qui n'est jamais une string vide car il y a au minimum le début du message.
+        """
+        configValide=True
+        #alert = "<div><p>Votre configuration n'est pas valide :<ul>"
+        alert=''
+        
+        valid , message = self.isUrlEcoleValid()
+        alert+=message
+        if valid==False :
+            configValide=False
+            
+        valid , message = self.isSSApiKeyValid()
+        alert+=message
+        if valid==False :
+            configValide=False
+            
+        valid , message = self.isInterNummerExpediteurValid()
+        alert+=message
+        if valid==False :
+            configValide=False
+        
+        valid , message = self.doesChampIdentSSExist()
+        alert+=message
+        if valid==False :
+            configValide=False
+        else: #on ne teste l'unicité du champIdentSS que s'il existe
+            valid , message = self.isChampIdentSSUnique()
+            alert+=message
+            if valid==False :
+                configValide=False
+        return configValide, alert
 
+    def isUrlEcoleValid(self):
+        """
+        Renvoie True si UrlEcole possède une valeur, sinon renvoie False
+        Renvoie aussi un message d'erreur qui est vide lorsque la config est valide.
+        """
+        valid=True
+        alert=''
+        if self.dictConfig["urlEcole"] == "" :
+            valid=False
+            alert = "<li>Vous n'avez pas configuré l'<b>adresse SmartSchool</b> de votre école.</li>"
+        return valid, alert
+    
+    def isSSApiKeyValid(self):
+        """
+        Renvoie True si SSApiKey possède une valeur, sinon renvoie False.
+        Renvoie aussi un message d'erreur qui est vide lorsque la config est valide.
+        """
+        valid=True
+        alert=''
+        if self.dictConfig["SSApiKey"] == "" :
+            valid=False
+            alert = "<li>Vous n'avez pas configuré la <b>clè d'accès à l'API</b>.</li>"
+        return  valid , alert
+
+    def isInterNummerExpediteurValid(self):
+        """
+        Renvoie True si interNummerExpediteur possède une valeur, sinon renvoie False.
+        Renvoie aussi un message d'erreur qui est vide lorsque la config est valide.
+        """
+        valid=True
+        alert=''
+        if self.dictConfig["interNummerExpediteur"] == "" :
+            valid=False
+            alert = "<li>Vous n'avez pas configuré le <b>numéro interne</b> de l'expéditeur.</li>"
+        return  valid , alert
+    
+    def isChampIdentSSUnique(self):
+        """
+        Renvoie False s'il existe au moins deux utilisateurs qui possèdent la même valeur pour le champ d'identification, sinon renvoie True.
+        Renvoie aussi un message d'erreur qui est vide lorsque le champ est unique.
+        """
+        listValeurChampIdentSS=[]
+        listeValeursNonUniques=[]
+        champIdentSS=self.dictConfig['champIdentSS']
+        for utilisateur in self.listUtilisateurs:
+            if utilisateur[champIdentSS] in listValeurChampIdentSS: #on forme une liste avec les valeurs présentes plus d'une fois
+                listeValeursNonUniques.append(utilisateur[champIdentSS])
+            if (utilisateur[champIdentSS] is not None) & (utilisateur[champIdentSS] != 'NULL'): #les utilisateurs avec une valeur NULL ou sans valeur sont ignorés
+                listValeurChampIdentSS.append (utilisateur[champIdentSS])
+        listeValeursNonUniques=set(listeValeursNonUniques)
+        if len(listValeurChampIdentSS)==len(set(listValeurChampIdentSS)): #le champ est unique s'il n'y a pas deux utilisateurs ayant la même valeur pour ce champ
+            valid=True
+            alert=''
+        else:
+            valid=False
+            alert = "<li>Le <b>champ de SmartSchool utilisé pour identifier les utilisateurs </b> n'est pas unique : il possède la même valeur pour des utilisateurs différents."
+            alert += "<br>La ou les valeurs présentes plus d'une fois sont : <ul>"
+            for valeur in listeValeursNonUniques:
+                alert += "<li> %s</li>" %valeur
+            alert += "</ul></li>"
+        return valid , alert
+    
+    def doesChampIdentSSExist(self):
+        valid=True
+        alert=''
+        champIdentSS=self.dictConfig['champIdentSS']
+        for utilisateur in self.listUtilisateurs:
+            try:
+                utilisateur[champIdentSS]
+            except:
+                valid=False
+        if valid==False:
+            alert="<li>Le <b>champ de SmartSchool utilisé pour identifier les utilisateurs </b> n'existe pas dans le profil d'au moins un utilisateur sur la plateforme SmartSchool de votre établissement.</li>"
+        return valid , alert
+        
+    
     def openDialConfig(self):
         """
         Ouvre une boite de dialogue qui permet de configurer le logiciel ou de modifier les valeurs de configuration
@@ -645,6 +748,11 @@ class Gui(QtWidgets.QMainWindow):
             self.saisieChampCorrespondanceSS.setText(self.dictConfig["champIdentSS"])
         else:
             self.saisieChampCorrespondanceSS.setPlaceholderText("Normalement : stamboeknummer ou internnummer")
+        myTip="<p>Le nom des fichiers à envoyer doit contenir une valeur permettant d'identifier son destinataire.</p>"
+        myTip+="<p>Il s'agit normalement de la valeur de son <b>stamboeknummer</b> ou de son <b>internnummer</b> mais un autre champ de correspondance pourrait être utilisé.</p>"
+        myTip+="<p>Ce champ doit exister dans le profil des utilisateurs et doit être unique : deux utilisateurs différents ne peuvent pas avoir le même identifiant.</p>"
+        myTip+="<p>Si vous ne savez pas quelle valeur mettre ici, choisissez <b>stamboeknummer</b>, ce champ de SS correspond normalement au matricule des profs et des élèves.</p>"
+        self.saisieChampCorrespondanceSS.setToolTip(myTip)
         mon_layout.addWidget(self.saisieChampCorrespondanceSS)
         
         #les boutons enregistrer, fermer, tester
@@ -667,7 +775,7 @@ class Gui(QtWidgets.QMainWindow):
 
     def closeDialConfig(self):
         self.dialConfig.close()
-    #
+    
     def isConfigChanged(self):
         """
         Renvoie True si la config donnée dans la boite de dialogue est différente de celle stockée dans le dictConfig, sinon renvoie false
@@ -683,16 +791,7 @@ class Gui(QtWidgets.QMainWindow):
             change=True
         return change
             
-    def isFieldValid(self):
-        champIdentSS=self.dictConfig['champIdentSS']
-        for utilisateur in self.listUtilisateurs:
-            try:
-                utilisateur[champIdentSS]
-                valid=True
-            except:
-                valid=False
-        return valid
-        
+
         
     def recordValue(self):
         """
@@ -702,44 +801,37 @@ class Gui(QtWidgets.QMainWindow):
             TempDictConfig = {}
             TempDictConfig["urlEcole"] = str(self.saisieUrl.text())
             TempDictConfig["SSApiKey"] = str(self.saisieApiKey.text())
-            TempDictConfig["interNummerExpediteur"] = str(
-                self.saisieInternummer.text())
+            TempDictConfig["interNummerExpediteur"] = str(self.saisieInternummer.text())
             TempDictConfig["champIdentSS"] = str(self.saisieChampCorrespondanceSS.text())
+            
             myFile = open("config.json", "w")
             myFile.write(json.dumps(TempDictConfig))
             myFile.close()
             self.getConfig()  # apres avoir enregistré les valeurs de config dansle fichier JSON, on génère le dictConfig
-            self.refreshDictUtilisateurs() #il faut recharger les utilisateurs au cas ou le champIdentSS a été placé sur une valeur non prévue au départ
-        valid=self.isFieldValid()
-        
-        if valid:
-            self.dialConfig.close()
+            
+         
+        valid , message = self.isConfigValid()
+        alert = "<div><p>Configuration non valide :<ul>"
+        alert += message
+        alert += "</ul></p></div>"
+
+        if not valid :
+            QtWidgets.QMessageBox.warning(self, 'Logiciel mal configuré', alert)
         else:
-            message="<p>Une erreur est survenue.</p>"
-            message+="<p>Le <b>champ de SmartSchool utilisé pour identifier les utilisateurs</b> tel que renseigné dans la configuration ne semble pas exister dans le profil des utilisateurs sur la plateforme SmartSchool de votre établissement.</p>"
-            QtWidgets.QMessageBox.warning(self, 'Echec', message)
-        return valid
-    
-    
-    def isConfigValid(self):
-        """On vérifie si les différents paramètres possèdent une valeur, pas si cette valeur est la bonne"""
-        self.isUrlEcoleValid() #
-        self.isSSApiKeyValid() #
-        self.isInterNummerExpediteurValid()
-        self.isChampIdentSSValid()
-    
-    def isChampIdentSSValid(self):
-        self.isChampIdentSSUnique() #on crée une lsite avec toutes les valeurs de ce champs et on compare sa taille à un set créé à partir de la liste
-        self.doesChampIdentSSExist() #déjà fait, à déplacer
-        
+            self.prodDictUtilisateurs() #il faut recharger les utilisateurs au cas ou le champIdentSS a été placé sur une valeur différente de celle de départ
+            self.dialConfig.close()
+
     def testConfig(self):
         """
-        Teste la configuration en envoyant un message avec une pièce jointe à la personne indiquée dans le champ 'expéditeur'.
+        Teste la configuration en envoyant un message avec , si possible, une pièce jointe à la personne indiquée dans le champ 'expéditeur'.
         """
-        valid=self.recordValue()
+        valid , message = self.isConfigValid()
         if valid:
-            webservices = "https://" + self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl" #je crée le webservices et le client ici pour ne pas le recréer à chaque envoi dans la boucle d'envois
-            self.client = Client(webservices)
+            try:
+                self.client
+            except:
+                self.client=self.SSApiClient()
+        
             
             try :
                 myFile=open('./test.pdf', "rb")
@@ -766,6 +858,12 @@ class Gui(QtWidgets.QMainWindow):
                 message="<p>Une erreur est survenue.</p>"
                 message+="<p>"+self.dictError[str(result)]+"</p>"
                 QtWidgets.QMessageBox.warning(self, 'Echec', message)
+        
+        else : #la config n'est pas valide
+            message="<p>Une erreur est survenue.</p>"
+            message+="<p>"+self.dictError[str(result)]+"</p>"
+            QtWidgets.QMessageBox.warning(self, 'Configuration non valide', message)
+            
                 
         
 
@@ -778,43 +876,37 @@ class Gui(QtWidgets.QMainWindow):
     ############################################
     def verifAvantEnvoi(self):
         """Vérifie que tout est en ordre avant d'envoyer les fichiers"""
-        self.getConfig()  # je refais un getConfig ici car après un permier envoie le dictUtilisateurs est vidé et il faut le recharger depuis SS. La fonction getConfig recharge le dictUtilisateurs si il est vide
-
-        noFile = 1
-        for utilisateur in self.dictUtilisateurs.values():  # on vérifie s'il y a au moins un fichier à envoyer
-            if utilisateur.filePath != "":
-                noFile = 0
-
+        valide , message = self.isConfigValid()
         alert = "<div><p>Vous voulez envoyer les messages mais :<ul>"
-        valide = 1
+        alert += message
+        
+        # on vérifie s'il y a au moins un fichier à envoyer
+        noFile = True
+        for utilisateur in self.dictUtilisateurs.values():  
+            if utilisateur.filePath != "":
+                noFile = False
         if noFile:
             alert += "<li>Vous n'avez importé <b>aucun fichier</b> à envoyer</li>"
-            valide = 0
-        #if self.dictConfig["web"] == 0:
-        #   alert += "<li>Vous ne semblez pas connecté à  <b>internet</b></li>"
-        #  valide = 0
-        if self.dictConfig["urlEcole"] == "":
-            alert += "<li>Vous n'avez pas configuré l'<b>adresse SmartSchool</b> de votre école.</li>"
-            valide = 0
-        if self.dictConfig["SSApiKey"] == "":
-            alert += "<li>Vous n'avez pas configuré la<b>clè d'accès à l'API</b>.</li>"
-            valide = 0
-        if self.dictConfig["interNummerExpediteur"] == "":
-            alert += "<li>Vous n'avez pas configuré le <b>numéro interne</b> de l'expéditeur.</li>"
-            valide = 0
+            valide = False
+        
+        #check if message subject is not empty
         if self.sujet.text() == "":  # or self.message.toHtml()=="":
-            valide = 0
+            valide = False
             alert += "<li>Vous avez oublié le <b>sujet</b></li>"
+        
+        #check if message body is not empty
         if self.message.toPlainText() == "":
-            valide = 0
+            valide = False
             alert += "<li>Vous avez oublié le <b>message</b></li>"
+        
+        #check if there is at least one recipient
         if (self.sendComptePrincipal.isChecked() == 0) & (self.sendComptesSecondaires.isChecked() == 0):
-            valide = 0
+            valide = False
             alert += "<li>Vous n'avez sélectionné <b>aucun compte</b> pour l'envoi</li>"
 
         alert += "</ul></p></div>"
 
-        if valide == 0:
+        if not valide :
             QtWidgets.QMessageBox.warning(self, 'Envoi impossible', alert)
         else:
             try:
@@ -843,7 +935,7 @@ class Gui(QtWidgets.QMainWindow):
                 
                 
     def sendMsg(self, utilisateur):
-        """envoie le fichier fileName(str) à l'utilisateur utilisateur(obj) """
+        """envoie le fichier fileName(str) à l'utilisateur utilisateur(obj) et aux comptes secondaires associés"""
         if self.Renommer.isChecked():
             attachmentName=self.getAttachementName(utilisateur)
         else:
@@ -912,26 +1004,14 @@ class Gui(QtWidgets.QMainWindow):
 
     def sendAllFiles(self):
         """Envoi tous les fichiers importés"""
-        valide = 1
-        alert = "<div><p>Vous voulez envoyer les messages mais :<ul>"
-        if self.sujet.text() == "":  # or self.message.toHtml()=="":
-            valide = 0
-            alert += "<li>Vous avez oublié le <b>sujet</b></li>"
-        if self.message.toPlainText() == "":
-            valide = 0
-            alert += "<li>Vous avez oublié le <b>message</b></li>"
-        alert += "</ul></p></div>"
-
-        if valide == 0:
-            QtWidgets.QMessageBox.warning(
-                self, 'Pas de sujet - pas de message', alert)
-        else:
-            self.cleanDictUtilisateurs()
-            webservices = "https://" + self.dictConfig["urlEcole"]+"/Webservices/V3?wsdl" #je crée le webservices et le client ici pour ne pas le recréer à chaque envoi dans la boucle d'envois
-            self.client = Client(webservices)
-
-            for utilisateur in self.dictUtilisateurs.values():
-                self.sendMsg(utilisateur)
+        self.cleanDictUtilisateurs()
+        try:
+            self.client
+        except:
+            self.client=self.SSApiClient()
+        
+        for utilisateur in self.dictUtilisateurs.values():
+            self.sendMsg(utilisateur)
         self.cleanDictUtilisateurs()
         if self.dictUtilisateurs == {}:
             message = "<div><p>Tous les documents ont été envoyés avec succès.</p><p>Si vous importez de nouveaux fichiers la liste des utilisateurs sera à nouveau importée.</p></div>"
@@ -997,5 +1077,6 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     gui = Gui()
     gui.getConfig()
+    gui.prodDictUtilisateurs()
     gui.show()
     app.exec_()
